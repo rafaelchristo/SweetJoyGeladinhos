@@ -15,11 +15,11 @@ class SweetJoyApp : Application() {
         database = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
-            "sweetjoy-db"
+            "sweetjoy.db"
         ).fallbackToDestructiveMigration() // <--- adiciona isso
             .build()
 
+        val produtoDao = database.produtoDao()
+        val estoqueDao = database.estoqueDao()
     }
 }
-
-

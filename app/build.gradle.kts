@@ -1,10 +1,9 @@
-    plugins {
-        id("kotlin-kapt")
-        alias(libs.plugins.android.application)
-        alias(libs.plugins.kotlin.android)
-        alias(libs.plugins.kotlin.compose)
-
-    }
+plugins {
+    id("kotlin-kapt")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
 
     android {
         namespace = "com.example.sweetjoygeladinhos"
@@ -53,9 +52,10 @@
         implementation(libs.androidx.material3)
         implementation(libs.androidx.navigation.compose)
         implementation("androidx.compose.material:material-icons-extended:1.0.0")
-        implementation("androidx.room:room-runtime:2.6.1")
-        kapt("androidx.room:room-compiler:2.6.1")
-        implementation("androidx.room:room-ktx:2.6.1")
+        // ROOM (corrigido)
+        implementation(libs.androidx.room.runtime)
+        implementation(libs.androidx.room.ktx)
+        kapt(libs.androidx.room.compiler)
         testImplementation(libs.junit)
         androidTestImplementation(libs.androidx.junit)
         androidTestImplementation(libs.androidx.espresso.core)

@@ -1,21 +1,28 @@
 package com.example.sweetjoygeladinhos.data
 
+
+import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import androidx.room.*
 import com.example.sweetjoygeladinhos.model.EstoqueItem
-import kotlinx.coroutines.flow.Flow
+import com.example.sweetjoygeladinhos.model.Produto
+
 
 @Dao
 interface EstoqueDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: EstoqueItem)
+    suspend fun insertEstoqueItem(estoqueItem: EstoqueItem): Long
 
-    @Update
-    suspend fun update(item: EstoqueItem)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProduto(produto: Produto): Long
 
-    @Delete
-    suspend fun delete(item: EstoqueItem)
+    @Transaction
+    suspend fun insert(produto: Produto, quantidade: Int) {
+        val produtoId = insertProduto(produto)
+        insertEstoqueItem(EstoqueItem(produtoId = produtoId, quantidade = quantidade))
+    }
 
-    @Query("SELECT * FROM EstoqueItem")
-    fun getAll(): Flow<List<EstoqueItem>>
+    @Transaction
+    @Query("SELECT * FROM estoque_item")
+    suspend fun getAll(): List<EstoqueItemComProduto>
 }

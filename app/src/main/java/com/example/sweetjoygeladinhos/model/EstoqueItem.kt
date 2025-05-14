@@ -1,17 +1,19 @@
 package com.example.sweetjoygeladinhos.model
 
-import androidx.room.ColumnInfo
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import androidx.room.*
 
-@Entity
+@Entity(
+    tableName = "estoque_item",
+    foreignKeys = [ForeignKey(
+        entity = Produto::class,
+        parentColumns = ["produtoId"],
+        childColumns = ["produtoId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index(value = ["produtoId"])]
+)
 data class EstoqueItem(
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "estoque_id") val estoqueId: Long = 0,
-
-    @Embedded(prefix = "produto_")
-    val produto: Produto,
-
-    @ColumnInfo(name = "quantidade") val quantidade: Int
+    @PrimaryKey(autoGenerate = true) val estoqueId: Long = 0,
+    val produtoId: Long, // <-- Agora usamos o ID do produto
+    val quantidade: Int
 )

@@ -14,48 +14,47 @@ import com.example.sweetjoygeladinhos.model.EstoqueItem
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.room.PrimaryKey
+import kotlin.String
+import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VendasScreen() {
-    // Estado para armazenar os produtos no estoque
+    // Lista de itens no estoque com produtos
     var estoqueList by remember {
         mutableStateOf(
             listOf(
-                EstoqueItem(1, Produto(1, "Geladinho", "Morango com Chocolate Branco", 2.5), 30),
-                EstoqueItem(2, Produto(2, "Geladinho", "Chocolate com Doce de Leite", 3.0), 20),
-                EstoqueItem(3, Produto(3, "Geladinho", "Ninho com Nutella", 2.8), 25),
-                EstoqueItem(4, Produto(4, "Geladinho", "Oreo", 2.8), 25),
-                EstoqueItem(5, Produto(5, "Geladinho", "Mousse de Limão", 2.8), 25),
-                EstoqueItem(6, Produto(6, "Geladinho", "Trufado de Maracujá", 2.8), 25),
-                EstoqueItem(7, Produto(7, "Geladinho", "Paçoca", 2.8), 25),
-                EstoqueItem(8, Produto(8, "Geladinho", "Pudim", 2.8), 25)
+                EstoqueItemComProduto(
+                    estoqueItem = EstoqueItem(1, produtoId = 1L, quantidade = 30),
+                    produto = Produto(1, "Morango", "Chocolate Branco", 2.5)
+                )
             )
         )
     }
 
-    // Estado para os campos de venda
-    var produtoSelecionado by remember { mutableStateOf<EstoqueItem?>(null) }
+    // Estado para seleção de produto e quantidade
+    var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
     var quantidadeVenda by remember { mutableStateOf("") }
     var vendasRegistradas by remember { mutableStateOf(listOf<Pair<String, Int>>()) }
 
-    // Função para registrar uma venda
+    // Função para registrar venda
     fun registrarVenda() {
         val quantidadeInt = quantidadeVenda.toIntOrNull() ?: 0
-        if (produtoSelecionado != null && quantidadeInt > 0 && produtoSelecionado!!.quantidade >= quantidadeInt) {
-            // Atualiza o estoque
-            val produtoAtualizado = produtoSelecionado!!.copy(
-                quantidade = produtoSelecionado!!.quantidade - quantidadeInt
-            )
+        val estoqueItem = produtoSelecionado?.estoqueItem
+
+        if (estoqueItem != null && quantidadeInt > 0 && estoqueItem.quantidade >= quantidadeInt) {
+            val atualizado = estoqueItem.copy(quantidade = estoqueItem.quantidade - quantidadeInt)
+
             estoqueList = estoqueList.map {
-                if (it.estoqueId == produtoSelecionado!!.estoqueId) produtoAtualizado else it
+                if (it.estoqueItem.estoqueId == estoqueItem.estoqueId) {
+                    it.copy(estoqueItem = atualizado)
+                } else it
             }
 
-            // Registra a venda
             vendasRegistradas = vendasRegistradas + Pair(produtoSelecionado!!.produto.nome, quantidadeInt)
 
-            // Limpa os campos
             produtoSelecionado = null
             quantidadeVenda = ""
         }
@@ -72,7 +71,6 @@ fun VendasScreen() {
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            // Seleção de produto
             Text("Selecione o Produto")
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -99,7 +97,7 @@ fun VendasScreen() {
                 ) {
                     estoqueList.forEach { item ->
                         DropdownMenuItem(
-                            text = { Text(item.produto.sabor) },  // <-- Aqui está a correção
+                            text = { Text(item.produto.sabor) },
                             onClick = {
                                 produtoSelecionado = item
                                 expanded = false
@@ -109,16 +107,15 @@ fun VendasScreen() {
                 }
             }
 
-            // Campo para a quantidade de venda
             OutlinedTextField(
                 value = quantidadeVenda,
                 onValueChange = { quantidadeVenda = it },
                 label = { Text("Quantidade de Venda") },
                 modifier = Modifier.fillMaxWidth()
             )
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botão para registrar venda
             Button(
                 onClick = { registrarVenda() },
                 modifier = Modifier.fillMaxWidth()
@@ -128,7 +125,6 @@ fun VendasScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Exibição das vendas registradas
             Text(text = "Vendas Registradas", style = MaterialTheme.typography.titleMedium)
             LazyColumn(modifier = Modifier.padding(16.dp)) {
                 items(vendasRegistradas) { venda ->
@@ -139,8 +135,8 @@ fun VendasScreen() {
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = "Produto: ${venda.first ?: "Desconhecido"}")  // Garantindo que não seja nulo
-                            Text(text = "Quantidade: ${venda.second ?: 0}")  // Garantindo que não seja nulo
+                            Text("Produto: ${venda.first}")
+                            Text("Quantidade: ${venda.second}")
                         }
                     }
                 }
@@ -148,6 +144,7 @@ fun VendasScreen() {
         }
     }
 }
+
 
 @Preview
 @Composable

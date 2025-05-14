@@ -2,7 +2,6 @@ package com.example.sweetjoygeladinhos.data
 
 import androidx.room.*
 import com.example.sweetjoygeladinhos.model.Produto
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProdutoDao {
@@ -18,6 +17,4 @@ interface ProdutoDao {
 
     @Query("SELECT * FROM produto")
     suspend fun getAll(): List<Produto>
-
-
 }
