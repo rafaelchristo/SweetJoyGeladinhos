@@ -21,5 +21,6 @@ class SweetJoyApp : Application() {
 
         val produtoDao = database.produtoDao()
         val estoqueDao = database.estoqueDao()
+        val vendaDao = database.vendaDao()
     }
 }

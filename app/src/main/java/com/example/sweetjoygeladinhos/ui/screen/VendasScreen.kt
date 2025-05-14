@@ -4,65 +4,67 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.sweetjoygeladinhos.model.Produto
-import com.example.sweetjoygeladinhos.model.EstoqueItem
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.room.PrimaryKey
-import kotlin.String
+import androidx.compose.ui.unit.sp
+import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
-
+import com.example.sweetjoygeladinhos.model.Venda
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VendasScreen() {
-    // Lista de itens no estoque com produtos
-    var estoqueList by remember {
-        mutableStateOf(
-            listOf(
-                EstoqueItemComProduto(
-                    estoqueItem = EstoqueItem(1, produtoId = 1L, quantidade = 30),
-                    produto = Produto(1, "Morango", "Chocolate Branco", 2.5)
-                )
-            )
-        )
-    }
+    val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
+    val vendaDao = remember { SweetJoyApp.database.vendaDao() }
+    val coroutineScope = rememberCoroutineScope()
 
-    // Estado para seleção de produto e quantidade
+    var estoqueList by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
     var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
     var quantidadeVenda by remember { mutableStateOf("") }
-    var vendasRegistradas by remember { mutableStateOf(listOf<Pair<String, Int>>()) }
+    var vendasRegistradas by remember { mutableStateOf(emptyList<Venda>()) }
+    var expanded by remember { mutableStateOf(false) }
 
-    // Função para registrar venda
+    LaunchedEffect(Unit) {
+        estoqueList = estoqueDao.getAll()
+        vendasRegistradas = vendaDao.getAll()
+    }
+
     fun registrarVenda() {
-        val quantidadeInt = quantidadeVenda.toIntOrNull() ?: 0
-        val estoqueItem = produtoSelecionado?.estoqueItem
+        val quantidadeInt = quantidadeVenda.toIntOrNull() ?: return
+        val estoqueItem = produtoSelecionado?.item ?: return
 
-        if (estoqueItem != null && quantidadeInt > 0 && estoqueItem.quantidade >= quantidadeInt) {
-            val atualizado = estoqueItem.copy(quantidade = estoqueItem.quantidade - quantidadeInt)
+        if (estoqueItem.quantidade >= quantidadeInt) {
+            coroutineScope.launch {
+                estoqueDao.insert(estoqueItem.produtoId, -quantidadeInt)
+                vendaDao.insert(
+                    Venda(
+                        produtoId = estoqueItem.produtoId,
+                        quantidade = quantidadeInt
+                    )
+                )
 
-            estoqueList = estoqueList.map {
-                if (it.estoqueItem.estoqueId == estoqueItem.estoqueId) {
-                    it.copy(estoqueItem = atualizado)
-                } else it
+                estoqueList = estoqueDao.getAll()
+                vendasRegistradas = vendaDao.getAll()
+
+                produtoSelecionado = null
+                quantidadeVenda = ""
             }
-
-            vendasRegistradas = vendasRegistradas + Pair(produtoSelecionado!!.produto.nome, quantidadeInt)
-
-            produtoSelecionado = null
-            quantidadeVenda = ""
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Vendas") })
+            TopAppBar(
+                title = { Text("Vendas", fontSize = 22.sp) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
         }
     ) { innerPadding ->
         Column(
@@ -74,8 +76,6 @@ fun VendasScreen() {
             Text("Selecione o Produto")
             Spacer(modifier = Modifier.height(8.dp))
 
-            var expanded by remember { mutableStateOf(false) }
-
             Box {
                 OutlinedTextField(
                     value = produtoSelecionado?.produto?.nome ?: "",
@@ -85,7 +85,7 @@ fun VendasScreen() {
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { expanded = !expanded }) {
-                            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = "Dropdown")
+                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
                         }
                     }
                 )
@@ -135,8 +135,8 @@ fun VendasScreen() {
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Produto: ${venda.first}")
-                            Text("Quantidade: ${venda.second}")
+                            Text("Produto ID: ${venda.produtoId}")
+                            Text("Quantidade: ${venda.quantidade}")
                         }
                     }
                 }
@@ -145,9 +145,8 @@ fun VendasScreen() {
     }
 }
 
-
-@Preview
 @Composable
+@Preview
 fun PreviewVendasScreen() {
     VendasScreen()
 }

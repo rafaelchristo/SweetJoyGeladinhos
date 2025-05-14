@@ -1,5 +1,8 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,37 +11,44 @@ import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.sweetjoygeladinhos.R
 import androidx.navigation.NavHostController
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.material.icons.filled.Storefront
-
-
-
+import com.example.sweetjoygeladinhos.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    onNavigateToProdutos: () -> Unit = {},
-    onNavigateToEstoque: () -> Unit = {},
-    onNavigateToVendas: () -> Unit = {},
-    onNavigateToPagamentos: () -> Unit = {}
-) {
+fun HomeScreen(navController: NavHostController) {
+    var showContent by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        showContent = true
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("SweetJoy Geladinhos", fontSize = 22.sp, fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "SweetJoy Geladinhos",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { innerPadding ->
@@ -50,94 +60,44 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Logo ou imagem
-            Image(
-                painter = painterResource(id = R.drawable.logo), // substitua por sua imagem ou remova se não tiver
-                contentDescription = "Logo",
-                modifier = Modifier
-                    .height(120.dp)
-                    .padding(bottom = 8.dp)
-            )
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "Logo",
+                        modifier = Modifier
+                            .height(120.dp)
+                            .padding(bottom = 8.dp)
+                    )
 
-            Text(
-                text = "Gerencie seus Geladinhos com estilo!",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            )
+                    Text(
+                        text = "Gerencie seus Geladinhos com estilo!",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botões de navegação
-            NavigationButton("Produtos", Icons.Default.LocalGroceryStore, onNavigateToProdutos)
-            NavigationButton("Estoque", Icons.Default.Inventory, onNavigateToEstoque)
-            NavigationButton("Vendas", Icons.Default.ShoppingCart, onNavigateToVendas)
-            NavigationButton("Pagamentos", Icons.Default.Money, onNavigateToPagamentos)
-        }
-    }
-}
-
-@Composable
-fun NavigationButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-    ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = label, fontSize = 16.sp)
-    }
-}
-
-@ExperimentalMaterial3Api
-@Composable
-fun HomeScreen(navController: NavHostController) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("SweetJoy Geladinhos") }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Exibe uma logo se houver imagem em res/drawable/logo.png
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Logo SweetJoy",
-                modifier = Modifier.size(120.dp),
-
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            ButtonWithIcon("Gerenciar Produtos", Icons.Default.Storefront) {
+            NavigationButton("Produtos", Icons.Default.LocalGroceryStore) {
                 navController.navigate("produtos")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ButtonWithIcon("Controle de Estoque", Icons.Default.Inventory) {
+            NavigationButton("Estoque", Icons.Default.Inventory) {
                 navController.navigate("estoque")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ButtonWithIcon("Registrar Vendas", Icons.Default.ShoppingCart) {
+            NavigationButton("Vendas", Icons.Default.ShoppingCart) {
                 navController.navigate("vendas")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ButtonWithIcon("Pagamentos", Icons.Default.Money) {
+            NavigationButton("Pagamentos", Icons.Default.Money) {
                 navController.navigate("pagamentos")
             }
         }
@@ -145,13 +105,15 @@ fun HomeScreen(navController: NavHostController) {
 }
 
 @Composable
-fun ButtonWithIcon(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+fun NavigationButton(label: String, icon: ImageVector, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
     ) {
-        Icon(icon, contentDescription = text, modifier = Modifier.padding(end = 8.dp))
-        Text(text)
+        Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = label, fontSize = 16.sp)
     }
 }

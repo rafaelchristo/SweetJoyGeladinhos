@@ -1,15 +1,14 @@
 package com.example.sweetjoygeladinhos.model
 
-import androidx.room.*
-import com.example.sweetjoygeladinhos.model.EstoqueItem
-import com.example.sweetjoygeladinhos.model.Produto
+import androidx.room.Embedded
+import androidx.room.Relation
 
 data class EstoqueItemComProduto(
-    @Embedded val estoqueItem: EstoqueItem,
+    @Embedded val item: EstoqueItem,
+
     @Relation(
         parentColumn = "produtoId",
         entityColumn = "produtoId"
     )
     val produto: Produto
 )
-

@@ -1,19 +1,18 @@
 package com.example.sweetjoygeladinhos.model
 
-import androidx.room.*
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "estoque_item",
     foreignKeys = [ForeignKey(
         entity = Produto::class,
         parentColumns = ["produtoId"],
         childColumns = ["produtoId"],
         onDelete = ForeignKey.CASCADE
-    )],
-    indices = [Index(value = ["produtoId"])]
+    )]
 )
 data class EstoqueItem(
-    @PrimaryKey(autoGenerate = true) val estoqueId: Long = 0,
-    val produtoId: Long, // <-- Agora usamos o ID do produto
+    @PrimaryKey val produtoId: Long,
     val quantidade: Int
 )

@@ -5,7 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.sweetjoygeladinhos.ui.screens.ProdutosScreen
-import com.example.sweetjoygeladinhos.ui.screens.EstoqueScreen
+import com.example.sweetjoygeladinhos.ui.screen.EstoqueScreen
 import com.example.sweetjoygeladinhos.ui.screens.VendasScreen
 import com.example.sweetjoygeladinhos.ui.screens.PagamentosScreen
 

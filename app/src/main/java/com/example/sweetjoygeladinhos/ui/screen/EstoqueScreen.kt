@@ -1,4 +1,4 @@
-package com.example.sweetjoygeladinhos.ui.screens
+package com.example.sweetjoygeladinhos.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -6,109 +6,132 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.sweetjoygeladinhos.model.Produto
-import com.example.sweetjoygeladinhos.model.EstoqueItem
+import androidx.compose.ui.unit.sp
 import com.example.sweetjoygeladinhos.SweetJoyApp
-import kotlinx.coroutines.launch
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
+import com.example.sweetjoygeladinhos.model.EstoqueItem
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstoqueScreen() {
+    val context = LocalContext.current
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
+    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
 
-    var nome by remember { mutableStateOf("") }
-    var sabor by remember { mutableStateOf("") }
-    var preco by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+
+    var produtos by remember { mutableStateOf(emptyList<com.example.sweetjoygeladinhos.model.Produto>()) }
+    var estoque by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
+
+    var selectedProduto by remember { mutableStateOf<com.example.sweetjoygeladinhos.model.Produto?>(null) }
     var quantidade by remember { mutableStateOf("") }
-    var estoqueList by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
+    var expanded by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-
-    // Carrega o estoque ao iniciar
-    LaunchedEffect(true) {
-        estoqueList = estoqueDao.getAll()
+    LaunchedEffect(Unit) {
+        produtos = produtoDao.getAll()
+        estoque = estoqueDao.getAll()
     }
 
-    fun adicionarProduto() {
-        val precoDouble = preco.toDoubleOrNull() ?: return
+    fun salvarEstoque() {
+        val produto = selectedProduto ?: return
         val quantidadeInt = quantidade.toIntOrNull() ?: return
 
-        val produto = Produto(nome = nome, sabor = sabor, preco = precoDouble, categoria = "Geladinho")
-        scope.launch {
-            estoqueDao.insert(produto, quantidadeInt)
-            estoqueList = estoqueDao.getAll()
-            nome = ""
-            sabor = ""
-            preco = ""
+        coroutineScope.launch {
+            estoqueDao.insert(produto.produtoId, quantidadeInt)
+            estoque = estoqueDao.getAll()
             quantidade = ""
+            selectedProduto = null
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Estoque") })
+            TopAppBar(
+                title = { Text("Controle de Estoque", fontSize = 22.sp) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
         }
-    ) { padding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it },
-                label = { Text("Nome do Produto") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = sabor,
-                onValueChange = { sabor = it },
-                label = { Text("Sabor") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = preco,
-                onValueChange = { preco = it },
-                label = { Text("Preço") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Text("Selecionar Produto", style = MaterialTheme.typography.titleMedium)
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    readOnly = true,
+                    value = selectedProduto?.nome ?: "",
+                    onValueChange = {},
+                    label = { Text("Produto") },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    produtos.forEach { produto ->
+                        DropdownMenuItem(
+                            text = { Text("${produto.nome} (${produto.sabor})") },
+                            onClick = {
+                                selectedProduto = produto
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = quantidade,
                 onValueChange = { quantidade = it },
                 label = { Text("Quantidade") },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(16.dp))
+
             Button(
-                onClick = { adicionarProduto() },
+                onClick = { salvarEstoque() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Adicionar Produto")
+                Text("Salvar Estoque")
             }
+
             Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Itens no Estoque", style = MaterialTheme.typography.titleLarge)
+
             LazyColumn {
-                items(estoqueList) { item ->
+                items(estoque) { item ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 4.dp),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(item.produto.nome, style = MaterialTheme.typography.titleMedium)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("Produto: ${item.produto.nome}", style = MaterialTheme.typography.titleMedium)
                             Text("Sabor: ${item.produto.sabor}")
-                            Text("Preço: R$ %.2f".format(item.produto.preco))
-                            Text("Quantidade: ${item.estoqueItem.quantidade}")
+                            Text("Quantidade: ${item.item.quantidade}")
                         }
                     }
                 }
             }
+            }
+
         }
     }
-}
+

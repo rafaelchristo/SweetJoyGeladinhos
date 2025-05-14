@@ -5,8 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
 import androidx.navigation.compose.*
+import com.example.sweetjoygeladinhos.ui.screen.EstoqueScreen
 import com.example.sweetjoygeladinhos.ui.screens.*
 import com.example.sweetjoygeladinhos.ui.theme.SweetJoyGeladinhosTheme
+
 
 @ExperimentalMaterial3Api
 class MainActivity : ComponentActivity() {
