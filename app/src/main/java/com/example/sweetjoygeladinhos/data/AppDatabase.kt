@@ -8,7 +8,7 @@ import com.example.sweetjoygeladinhos.model.Venda
 
 @Database(
     entities = [Produto::class, EstoqueItem::class, Venda::class], // ← Certifique-se de incluir Venda aqui
-    version = 1
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun produtoDao(): ProdutoDao

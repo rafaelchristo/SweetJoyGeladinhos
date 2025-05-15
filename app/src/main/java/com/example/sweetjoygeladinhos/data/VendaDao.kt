@@ -11,6 +11,6 @@ interface VendaDao {
     @Insert
     suspend fun insert(venda: Venda)
 
-    @Query("SELECT * FROM Venda ORDER BY data DESC")
+    @Query("SELECT * FROM Venda ORDER BY dataVenda DESC")
     suspend fun getAll(): List<Venda>
 }

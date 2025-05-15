@@ -1,37 +1,54 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Venda
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VendasScreen() {
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
     val vendaDao = remember { SweetJoyApp.database.vendaDao() }
+    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val coroutineScope = rememberCoroutineScope()
 
     var estoqueList by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
     var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
     var quantidadeVenda by remember { mutableStateOf("") }
-    var vendasRegistradas by remember { mutableStateOf(emptyList<Venda>()) }
+    var vendasRegistradas by remember { mutableStateOf(emptyList<Pair<Venda, String>>()) }
     var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         estoqueList = estoqueDao.getAll()
-        vendasRegistradas = vendaDao.getAll()
+        val vendas = vendaDao.getAll()
+        val vendasComNomes = vendas.mapNotNull { venda ->
+            val produto = produtoDao.getById(venda.produtoId)
+            produto?.let { venda to it.nome }
+        }
+        vendasRegistradas = vendasComNomes
     }
 
     fun registrarVenda() {
@@ -40,16 +57,22 @@ fun VendasScreen() {
 
         if (estoqueItem.quantidade >= quantidadeInt) {
             coroutineScope.launch {
-                estoqueDao.insert(estoqueItem.produtoId, -quantidadeInt)
-                vendaDao.insert(
-                    Venda(
-                        produtoId = estoqueItem.produtoId,
-                        quantidade = quantidadeInt
-                    )
+                val novaQuantidade = estoqueItem.quantidade - quantidadeInt
+                estoqueDao.updateEstoqueItem(estoqueItem.copy(quantidade = novaQuantidade))
+
+                val data = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                val novaVenda = Venda(
+                    produtoId = estoqueItem.produtoId,
+                    quantidade = quantidadeInt,
+                    dataVenda = data
                 )
+                vendaDao.insert(novaVenda)
 
                 estoqueList = estoqueDao.getAll()
-                vendasRegistradas = vendaDao.getAll()
+                val produto = produtoDao.getById(estoqueItem.produtoId)
+                if (produto != null) {
+                    vendasRegistradas = listOf(novaVenda to produto.nome) + vendasRegistradas
+                }
 
                 produtoSelecionado = null
                 quantidadeVenda = ""
@@ -76,24 +99,33 @@ fun VendasScreen() {
             Text("Selecione o Produto")
             Spacer(modifier = Modifier.height(8.dp))
 
-            Box {
+            var fieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+
+            Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = produtoSelecionado?.produto?.nome ?: "",
                     onValueChange = {},
                     label = { Text("Produto") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { coordinates ->
+                            fieldSize = coordinates.size.toSize()
+                        }
+                        .clickable { expanded = true },
                     readOnly = true,
                     trailingIcon = {
-                        IconButton(onClick = { expanded = !expanded }) {
-                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
-                        }
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Abrir seleção",
+                            modifier = Modifier.clickable { expanded = true }
+                        )
                     }
                 )
 
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.width(with(LocalDensity.current) { fieldSize.width.toDp() })
                 ) {
                     estoqueList.forEach { item ->
                         DropdownMenuItem(
@@ -106,6 +138,8 @@ fun VendasScreen() {
                     }
                 }
             }
+
+
 
             OutlinedTextField(
                 value = quantidadeVenda,
@@ -123,11 +157,56 @@ fun VendasScreen() {
                 Text("Registrar Venda")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Text(text = "Vendas Registradas", style = MaterialTheme.typography.titleMedium)
-            LazyColumn(modifier = Modifier.padding(16.dp)) {
-                items(vendasRegistradas) { venda ->
+            Text("Estoque Atual", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(estoqueList) { item ->
+                    val isLowStock = item.item.quantidade <= 10
+                    val textColor = if (isLowStock) Color.Red else Color.Unspecified
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = item.produto.sabor)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isLowStock) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Baixo estoque",
+                                            tint = Color.Red,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Text(
+                                        text = "Qtd: ${item.item.quantidade}",
+                                        color = textColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium)
+            LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
+                items(vendasRegistradas) { (venda, nomeProduto) ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -135,8 +214,9 @@ fun VendasScreen() {
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Produto ID: ${venda.produtoId}")
+                            Text("Produto: $nomeProduto")
                             Text("Quantidade: ${venda.quantidade}")
+                            Text("Data da Venda: ${venda.dataVenda}")
                         }
                     }
                 }

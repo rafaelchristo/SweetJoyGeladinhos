@@ -9,5 +9,5 @@ data class Venda(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val produtoId: Long,
     val quantidade: Int,
-    val data: Long = System.currentTimeMillis()
+    val dataVenda: String // ✅ data como String (formato "dd/MM/yyyy")
 )

@@ -6,6 +6,9 @@ import com.example.sweetjoygeladinhos.model.Produto
 @Dao
 interface ProdutoDao {
 
+    @Query("SELECT * FROM Produto")
+    suspend fun getAll(): List<Produto>
+
     @Insert
     suspend fun insert(produto: Produto)
 
@@ -15,6 +18,6 @@ interface ProdutoDao {
     @Delete
     suspend fun delete(produto: Produto)
 
-    @Query("SELECT * FROM produto")
-    suspend fun getAll(): List<Produto>
+    @Query("SELECT * FROM Produto WHERE produtoId = :id LIMIT 1")
+    suspend fun getById(id: Long): Produto? // ✅ Este é o que faltava
 }

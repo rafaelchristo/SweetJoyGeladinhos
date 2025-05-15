@@ -20,6 +20,9 @@ interface EstoqueDao {
     @Update
     suspend fun updateEstoqueItem(item: EstoqueItem)
 
+    @Delete
+    suspend fun deleteEstoqueItem(item: EstoqueItem)
+
     @Query("DELETE FROM EstoqueItem WHERE produtoId = :produtoId")
     suspend fun deleteByProdutoId(produtoId: Long)
 
@@ -27,7 +30,8 @@ interface EstoqueDao {
     suspend fun insert(produtoId: Long, quantidade: Int) {
         val existente = getByProdutoId(produtoId)
         if (existente != null) {
-            updateEstoqueItem(existente.copy(quantidade = quantidade))
+            val novaQuantidade = existente.quantidade + quantidade
+            updateEstoqueItem(existente.copy(quantidade = novaQuantidade))
         } else {
             insertEstoqueItem(EstoqueItem(produtoId = produtoId, quantidade = quantidade))
         }
