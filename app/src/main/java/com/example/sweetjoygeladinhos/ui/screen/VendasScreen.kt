@@ -26,10 +26,13 @@ import com.example.sweetjoygeladinhos.model.Venda
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VendasScreen() {
+fun VendasScreen(navController: NavController) {
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
     val vendaDao = remember { SweetJoyApp.database.vendaDao() }
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
@@ -228,5 +231,6 @@ fun VendasScreen() {
 @Composable
 @Preview
 fun PreviewVendasScreen() {
-    VendasScreen()
+    val navController = rememberNavController() // Create a NavController for the preview
+    VendasScreen(navController = navController)
 }

@@ -66,6 +66,7 @@ plugins {
         debugImplementation(libs.androidx.ui.tooling)
         debugImplementation(libs.androidx.ui.test.manifest)
         coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+        implementation("com.airbnb.android:lottie-compose:6.3.0")
 
     }
 

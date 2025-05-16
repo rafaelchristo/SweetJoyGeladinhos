@@ -13,11 +13,12 @@ import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.EstoqueItem
 import kotlinx.coroutines.launch
-
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EstoqueScreen() {
+fun EstoqueScreen(navController: NavController) {
     val context = LocalContext.current
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }

@@ -15,13 +15,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
 import kotlinx.coroutines.launch
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProdutosScreen() {
+fun ProdutosScreen(navController: NavController) {
     val context = LocalContext.current
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
 
@@ -213,5 +216,7 @@ fun ProdutosScreen() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewProdutosScreen() {
-    ProdutosScreen()
+    // Create a dummy NavController for the preview
+    val navController = rememberNavController()
+    ProdutosScreen(navController = navController)
 }
