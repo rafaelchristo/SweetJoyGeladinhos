@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                     composable("estoque") { EstoqueScreen(navController) }
                     composable("vendas") { VendasScreen(navController) }
                     composable("pagamentos") { PagamentosScreen(navController) }
+                    composable("receitas") { ReceitaScreen(navController) }
                 }
             }
         }

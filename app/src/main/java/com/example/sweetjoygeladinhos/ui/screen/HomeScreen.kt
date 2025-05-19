@@ -82,6 +82,11 @@ fun HomeScreen(navController: NavController) {
                         onClick = { navController.navigate("pagamentos") },
                         modifier = Modifier.weight(1f)
                     )
+                    HomeButton(
+                        text = "Receitas",
+                        onClick = { navController.navigate("receitas") },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
