@@ -19,5 +19,5 @@ interface ProdutoDao {
     suspend fun delete(produto: Produto)
 
     @Query("SELECT * FROM Produto WHERE produtoId = :id LIMIT 1")
-    suspend fun getById(id: Long): Produto? // ✅ Este é o que faltava
+    suspend fun getById(id: Long): Produto?
 }

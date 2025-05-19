@@ -79,6 +79,7 @@ plugins {
         // When using the BoM, don't specify versions in Firebase dependencies
         implementation("com.google.firebase:firebase-analytics")
         implementation("com.google.android.gms:play-services-auth:20.7.0")
+        implementation("io.coil-kt:coil-compose:2.6.0")
         // Add the dependencies for any other desired Firebase products
         // https://firebase.google.com/docs/android/setup#available-libraries
 

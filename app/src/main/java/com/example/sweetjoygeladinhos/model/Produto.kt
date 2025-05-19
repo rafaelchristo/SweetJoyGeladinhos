@@ -9,6 +9,7 @@ data class Produto(
     val nome: String,
     val sabor: String,
     val preco: Double,
-    val categoria: String = "Gourmet" // valor padrão
+    val categoria: String = "Gourmet", // valor padrão
+    val imagemUri: String? = null
 )
 

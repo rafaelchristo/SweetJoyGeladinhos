@@ -1,5 +1,9 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,10 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
 import kotlinx.coroutines.launch
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,18 +35,22 @@ fun ProdutosScreen(navController: NavController) {
     var produtos by remember { mutableStateOf(emptyList<Produto>()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Estados para formulário e controle do diálogo
     var showDialog by remember { mutableStateOf(false) }
     var nome by remember { mutableStateOf("") }
     var sabor by remember { mutableStateOf("") }
     var preco by remember { mutableStateOf("") }
+    var imagemUri by remember { mutableStateOf<String?>(null) }
     var produtoEmEdicao by remember { mutableStateOf<Produto?>(null) }
 
-    // Diálogo de confirmação para deletar
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var produtoParaExcluir by remember { mutableStateOf<Produto?>(null) }
 
-    // Carrega os produtos ao abrir a tela
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imagemUri = uri?.toString()
+    }
+
     LaunchedEffect(Unit) {
         produtos = produtoDao.getAll()
     }
@@ -55,22 +63,27 @@ fun ProdutosScreen(navController: NavController) {
 
     fun salvarProduto() {
         val precoDouble = preco.toDoubleOrNull() ?: return
-        val produto = Produto(produtoEmEdicao?.produtoId ?: 0, nome, sabor, precoDouble)
+        val produto = Produto(
+            produtoId = produtoEmEdicao?.produtoId ?: 0L,
+            nome = nome,
+            sabor = sabor,
+            preco = precoDouble,
+            imagemUri = imagemUri
+        )
 
         coroutineScope.launch {
             if (produtoEmEdicao == null) {
-                // Novo produto
                 produtoDao.insert(produto)
             } else {
-                // Editar produto existente
                 produtoDao.update(produto)
             }
             carregarProdutos()
             showDialog = false
-            nome = ""; sabor = ""; preco = ""
+            nome = ""; sabor = ""; preco = ""; imagemUri = null
             produtoEmEdicao = null
         }
     }
+
     fun deletarProduto() {
         produtoParaExcluir?.let {
             coroutineScope.launch {
@@ -97,6 +110,7 @@ fun ProdutosScreen(navController: NavController) {
                 nome = ""
                 sabor = ""
                 preco = ""
+                imagemUri = null
                 showDialog = true
             }) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar Produto")
@@ -120,6 +134,15 @@ fun ProdutosScreen(navController: NavController) {
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
+                            produto.imagemUri?.let {
+                                Image(
+                                    painter = rememberAsyncImagePainter(it),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                )
+                            }
                             Text("Nome: ${produto.nome}", style = MaterialTheme.typography.titleMedium)
                             Text("Sabor: ${produto.sabor}")
                             Text("Preço: R$ %.2f".format(produto.preco))
@@ -133,6 +156,7 @@ fun ProdutosScreen(navController: NavController) {
                                     nome = produto.nome
                                     sabor = produto.sabor
                                     preco = produto.preco.toString()
+                                    imagemUri = produto.imagemUri
                                     showDialog = true
                                 }) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar")
@@ -151,7 +175,6 @@ fun ProdutosScreen(navController: NavController) {
         }
     }
 
-    // Diálogo para adicionar/editar
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -186,12 +209,15 @@ fun ProdutosScreen(navController: NavController) {
                         label = { Text("Preço") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                        Text(if (imagemUri != null) "Imagem selecionada" else "Selecionar Imagem")
+                    }
                 }
             }
         )
     }
 
-    // Confirmação de exclusão
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -216,7 +242,6 @@ fun ProdutosScreen(navController: NavController) {
 @Preview(showBackground = true)
 @Composable
 fun PreviewProdutosScreen() {
-    // Create a dummy NavController for the preview
     val navController = rememberNavController()
     ProdutosScreen(navController = navController)
 }
