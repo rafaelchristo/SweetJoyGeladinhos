@@ -1,7 +1,5 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
-import android.os.Handler
-import android.os.Looper
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
@@ -10,8 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.airbnb.lottie.compose.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
 @Composable
@@ -24,11 +21,19 @@ fun SplashScreen(navController: NavController) {
         iterations = 1
     )
 
+    val auth = FirebaseAuth.getInstance()
+
     LaunchedEffect(composition) {
         if (composition != null) {
-            delay(3000)
-            navController.navigate("home") {
-                popUpTo("splash") { inclusive = true }
+            delay(3000) // tempo da splash
+            if (auth.currentUser != null) {
+                navController.navigate("home") {
+                    popUpTo("splash") { inclusive = true }
+                }
+            } else {
+                navController.navigate("login") {
+                    popUpTo("splash") { inclusive = true }
+                }
             }
         }
     }
@@ -44,7 +49,7 @@ fun SplashScreen(navController: NavController) {
                 modifier = Modifier.size(300.dp)
             )
         } else {
-            CircularProgressIndicator() // fallback visível caso algo falhe
+            CircularProgressIndicator()
         }
     }
 }

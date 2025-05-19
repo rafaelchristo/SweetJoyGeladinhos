@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "417554127856",
+    "project_id": "sweetjoy-5bcf1",
+    "storage_bucket": "sweetjoy-5bcf1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:417554127856:android:474e29516b6b3251549b35",
+        "android_client_info": {
+          "package_name": "com.example.sweetjoygeladinhos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "417554127856-4rfo5rve1mk10uiq5tcv0u49p1oks7tu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sweetjoygeladinhos",
+            "certificate_hash": "f988cc6317f993d82f3201d28718c7691725fcfe"
+          }
+        },
+        {
+          "client_id": "417554127856-uh99s8v55sulnuf70tqupd4roshg1qi3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNb4VhC9oq9syCbIZiJZpzH7JKlaUHRiA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "417554127856-uh99s8v55sulnuf70tqupd4roshg1qi3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -3,6 +3,7 @@ package com.example.sweetjoygeladinhos
 import android.app.Application
 import androidx.room.Room
 import com.example.sweetjoygeladinhos.data.AppDatabase
+import com.google.firebase.FirebaseApp
 
 class SweetJoyApp : Application() {
     companion object {
@@ -18,6 +19,7 @@ class SweetJoyApp : Application() {
             "sweetjoy.db"
         ).fallbackToDestructiveMigration() // <--- adiciona isso
             .build()
+        FirebaseApp.initializeApp(this)
 
         val produtoDao = database.produtoDao()
         val estoqueDao = database.estoqueDao()

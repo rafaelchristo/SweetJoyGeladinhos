@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // Add the dependency for the Google services Gradle plugin
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
     android {
@@ -67,6 +69,19 @@ plugins {
         debugImplementation(libs.androidx.ui.test.manifest)
         coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
         implementation("com.airbnb.android:lottie-compose:6.3.0")
+        implementation("androidx.credentials:credentials:1.2.2") // Verifique a última versão
+        implementation("androidx.credentials:credentials-play-services-auth:1.2.2") // Para integração com Google Sign-In via Play Services
+        // Firebase Authentication (Recomendado para gerenciar usuários do Google)
+        implementation("com.google.firebase:firebase-auth-ktx")
+        // Import the Firebase BoM
+        implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
+        // TODO: Add the dependencies for Firebase products you want to use
+        // When using the BoM, don't specify versions in Firebase dependencies
+        implementation("com.google.firebase:firebase-analytics")
+        implementation("com.google.android.gms:play-services-auth:20.7.0")
+        // Add the dependencies for any other desired Firebase products
+        // https://firebase.google.com/docs/android/setup#available-libraries
 
+        apply(plugin = "com.google.gms.google-services")
     }
 

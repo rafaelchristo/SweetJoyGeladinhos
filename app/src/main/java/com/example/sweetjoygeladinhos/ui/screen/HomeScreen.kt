@@ -2,20 +2,36 @@ package com.example.sweetjoygeladinhos.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
+    val context = LocalContext.current
+    val firebaseAuth = FirebaseAuth.getInstance()
+    val oneTapClient = remember { Identity.getSignInClient(context) }
+
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sweet Joy Geladinhos") }
+                title = { Text("Sweet Joy Geladinhos") },
+                actions = {
+                    IconButton(onClick = { showLogoutDialog = true }) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Sair")
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -40,7 +56,6 @@ fun HomeScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Apply weight here
                     HomeButton(
                         text = "Produtos",
                         onClick = { navController.navigate("produtos") },
@@ -57,7 +72,6 @@ fun HomeScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Apply weight here
                     HomeButton(
                         text = "Vendas",
                         onClick = { navController.navigate("vendas") },
@@ -72,16 +86,42 @@ fun HomeScreen(navController: NavController) {
             }
         }
     }
+
+    // Diálogo de confirmação de logout
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Deseja sair?") },
+            text = { Text("Você será desconectado da sua conta.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    firebaseAuth.signOut()
+                    oneTapClient.signOut()
+                    navController.navigate("login") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }) {
+                    Text("Sair")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun HomeButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) { // Add modifier parameter
+fun HomeButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
-        modifier = modifier // Use the passed modifier
-            .aspectRatio(1f) // torna quadrado
-            .fillMaxWidth(), // Ensure button fills the space given by weight
-        shape = RoundedCornerShape(24.dp), // cantos arredondados
+        modifier = modifier
+            .aspectRatio(1f)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary
         )
