@@ -23,6 +23,15 @@ fun HomeScreen(navController: NavController) {
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    val menuItems = listOf(
+        "Produtos" to "produtos",
+        "Estoque" to "estoque",
+        "Vendas" to "vendas",
+        "Pagamentos" to "pagamentos",
+        "Receitas" to "receitas",
+        "Promocao" to "promocao"
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -52,47 +61,27 @@ fun HomeScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HomeButton(
-                        text = "Produtos",
-                        onClick = { navController.navigate("produtos") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    HomeButton(
-                        text = "Estoque",
-                        onClick = { navController.navigate("estoque") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HomeButton(
-                        text = "Vendas",
-                        onClick = { navController.navigate("vendas") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    HomeButton(
-                        text = "Pagamentos",
-                        onClick = { navController.navigate("pagamentos") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    HomeButton(
-                        text = "Receitas",
-                        onClick = { navController.navigate("receitas") },
-                        modifier = Modifier.weight(1f)
-                    )
+                menuItems.chunked(2).forEach { linha ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        linha.forEach { (text, route) ->
+                            HomeButton(
+                                text = text,
+                                onClick = { navController.navigate(route) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (linha.size < 2) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
     }
 
-    // Diálogo de confirmação de logout
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -124,8 +113,8 @@ fun HomeButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
     Button(
         onClick = onClick,
         modifier = modifier
-            .aspectRatio(1f)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .heightIn(min = 72.dp),
         shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary

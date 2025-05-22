@@ -80,6 +80,8 @@ plugins {
         implementation("com.google.firebase:firebase-analytics")
         implementation("com.google.android.gms:play-services-auth:20.7.0")
         implementation("io.coil-kt:coil-compose:2.6.0")
+        implementation("com.google.accompanist:accompanist-pager:0.33.2-alpha")
+        implementation("com.google.accompanist:accompanist-pager-indicators:0.33.2-alpha")
         // Add the dependencies for any other desired Firebase products
         // https://firebase.google.com/docs/android/setup#available-libraries
 

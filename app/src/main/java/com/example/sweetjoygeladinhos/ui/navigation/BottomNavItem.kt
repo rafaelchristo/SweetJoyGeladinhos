@@ -5,4 +5,5 @@ sealed class BottomNavItem(val route: String, val label: String) {
     object Estoque : BottomNavItem("estoque", "Estoque")
     object Vendas : BottomNavItem("vendas", "Vendas")
     object Pagamentos : BottomNavItem("pagamentos", "Pagamentos")
+    object Promocao : BottomNavItem("promocao", "Promocao")
 }

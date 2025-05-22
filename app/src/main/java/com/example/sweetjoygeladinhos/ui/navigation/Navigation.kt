@@ -1,11 +1,13 @@
 package com.example.sweetjoygeladinhos.ui.navigation
 
+import ProdutosScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.sweetjoygeladinhos.ui.screens.ProdutosScreen
+import com.example.sweetjoygeladinhos.ui.screens.*
 import com.example.sweetjoygeladinhos.ui.screen.EstoqueScreen // Assuming typo, should be ui.screens
+import com.example.sweetjoygeladinhos.ui.screen.PromocaoScreen
 import com.example.sweetjoygeladinhos.ui.screens.VendasScreen
 import com.example.sweetjoygeladinhos.ui.screens.PagamentosScreen
 
@@ -16,5 +18,6 @@ fun AppNavHost(navController: NavHostController, startDestination: String = "pro
         composable("estoque") { EstoqueScreen(navController = navController) }   // Pass navController
         composable("vendas") { VendasScreen(navController = navController) }     // Pass navController
         composable("pagamentos") { PagamentosScreen(navController = navController) } // Pass navController
+        composable("promocao") { PromocaoScreen(navController = navController) } // Pass navController")
     }
 }

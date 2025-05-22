@@ -1,11 +1,13 @@
 package com.example.sweetjoygeladinhos
 
+import ProdutosScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
 import androidx.navigation.compose.*
 import com.example.sweetjoygeladinhos.ui.screen.EstoqueScreen
+import com.example.sweetjoygeladinhos.ui.screen.PromocaoScreen
 import com.example.sweetjoygeladinhos.ui.screens.*
 import com.example.sweetjoygeladinhos.ui.theme.SweetJoyGeladinhosTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
                     composable("vendas") { VendasScreen(navController) }
                     composable("pagamentos") { PagamentosScreen(navController) }
                     composable("receitas") { ReceitaScreen(navController) }
+                    composable("promocao") { PromocaoScreen(navController) }
                 }
             }
         }

@@ -1,12 +1,17 @@
-package com.example.sweetjoygeladinhos.ui.screens
-
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -15,13 +20,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.sweetjoygeladinhos.R
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
 import kotlinx.coroutines.launch
@@ -41,9 +53,10 @@ fun ProdutosScreen(navController: NavController) {
     var preco by remember { mutableStateOf("") }
     var imagemUri by remember { mutableStateOf<String?>(null) }
     var produtoEmEdicao by remember { mutableStateOf<Produto?>(null) }
-
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var produtoParaExcluir by remember { mutableStateOf<Produto?>(null) }
+
+    var imagemEmTelaCheia by remember { mutableStateOf<String?>(null) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -70,7 +83,6 @@ fun ProdutosScreen(navController: NavController) {
             preco = precoDouble,
             imagemUri = imagemUri
         )
-
         coroutineScope.launch {
             if (produtoEmEdicao == null) {
                 produtoDao.insert(produto)
@@ -95,6 +107,31 @@ fun ProdutosScreen(navController: NavController) {
         }
     }
 
+    fun gerarMensagemCatalogo(produtos: List<Produto>): String {
+        val sb = StringBuilder()
+        sb.append("🍦 *Catálogo SweetJoyGeladinhos* 🍦\n\n")
+        produtos.forEachIndexed { index, produto ->
+            sb.append("${index + 1}️⃣ ${produto.nome}\n")
+            sb.append("Sabor: ${produto.sabor} \n")
+            sb.append("Preço: R$ %.2f\n\n".format(produto.preco))
+        }
+        sb.append("Faça seu pedido agora! 😋")
+        return sb.toString()
+    }
+
+    fun compartilharCatalogoNoWhatsApp(context: Context, mensagem: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, mensagem)
+            setPackage("com.whatsapp")
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "WhatsApp não está instalado.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -105,14 +142,14 @@ fun ProdutosScreen(navController: NavController) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                produtoEmEdicao = null
-                nome = ""
-                sabor = ""
-                preco = ""
-                imagemUri = null
-                showDialog = true
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    produtoEmEdicao = null
+                    nome = ""; sabor = ""; preco = ""; imagemUri = null
+                    showDialog = true
+                },
+                modifier = Modifier.shadow(8.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar Produto")
             }
         }
@@ -125,52 +162,93 @@ fun ProdutosScreen(navController: NavController) {
         ) {
             Text("Lista de Produtos", style = MaterialTheme.typography.titleLarge)
 
-            LazyColumn {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
                 items(produtos) { produto ->
                     Card(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        elevation = CardDefaults.cardElevation(4.dp)
+                            .aspectRatio(1f)
+                            .clickable { imagemEmTelaCheia = produto.imagemUri },
+                        elevation = CardDefaults.cardElevation(6.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
                             produto.imagemUri?.let {
                                 Image(
                                     painter = rememberAsyncImagePainter(it),
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(150.dp)
+                                        .size(80.dp)
+                                        .clip(MaterialTheme.shapes.medium),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
-                            Text("Nome: ${produto.nome}", style = MaterialTheme.typography.titleMedium)
-                            Text("Sabor: ${produto.sabor}")
-                            Text("Preço: R$ %.2f".format(produto.preco))
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(produto.nome, style = MaterialTheme.typography.titleMedium)
+                                Text(produto.sabor, fontSize = 12.sp)
+                                Text("R$ %.2f".format(produto.preco), fontSize = 12.sp)
+                            }
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                IconButton(onClick = {
-                                    produtoEmEdicao = produto
-                                    nome = produto.nome
-                                    sabor = produto.sabor
-                                    preco = produto.preco.toString()
-                                    imagemUri = produto.imagemUri
-                                    showDialog = true
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        produtoEmEdicao = produto
+                                        nome = produto.nome
+                                        sabor = produto.sabor
+                                        preco = produto.preco.toString()
+                                        imagemUri = produto.imagemUri
+                                        showDialog = true
+                                    }
+                                ) {
                                     Icon(Icons.Default.Edit, contentDescription = "Editar")
                                 }
-                                IconButton(onClick = {
-                                    produtoParaExcluir = produto
-                                    showDeleteConfirm = true
-                                }) {
+                                IconButton(
+                                    onClick = {
+                                        produtoParaExcluir = produto
+                                        showDeleteConfirm = true
+                                    }
+                                ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Excluir")
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    val mensagem = gerarMensagemCatalogo(produtos)
+                    compartilharCatalogoNoWhatsApp(context, mensagem)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_whatsapp),
+                    contentDescription = "WhatsApp",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Compartilhar Catálogo no WhatsApp")
             }
         }
     }
@@ -210,7 +288,10 @@ fun ProdutosScreen(navController: NavController) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                    OutlinedButton(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        modifier = Modifier.shadow(4.dp)
+                    ) {
                         Text(if (imagemUri != null) "Imagem selecionada" else "Selecionar Imagem")
                     }
                 }
@@ -237,11 +318,30 @@ fun ProdutosScreen(navController: NavController) {
             }
         )
     }
+
+    imagemEmTelaCheia?.let { uri ->
+        Dialog(onDismissRequest = { imagemEmTelaCheia = null }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { imagemEmTelaCheia = null },
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewProdutosScreen() {
-    val navController = rememberNavController()
-    ProdutosScreen(navController = navController)
+    ProdutosScreen(navController = rememberNavController())
 }
