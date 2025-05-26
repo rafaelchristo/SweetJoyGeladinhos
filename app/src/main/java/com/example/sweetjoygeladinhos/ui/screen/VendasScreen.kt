@@ -1,7 +1,5 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,19 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import androidx.navigation.NavController
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Venda
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,20 +33,32 @@ fun VendasScreen(navController: NavController) {
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val coroutineScope = rememberCoroutineScope()
 
-    var estoqueList by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
+    // Estoque é Flow - converte para State
+    val estoqueList by estoqueDao.getAll().collectAsState(initial = emptyList())
+
+    // Lista de vendas com nome do produto
+    var vendasRegistradas by remember { mutableStateOf<List<Pair<Venda, String>>>(emptyList()) }
+
     var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
     var quantidadeVenda by remember { mutableStateOf("") }
-    var vendasRegistradas by remember { mutableStateOf(emptyList<Pair<Venda, String>>()) }
     var expanded by remember { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
-    LaunchedEffect(Unit) {
-        estoqueList = estoqueDao.getAll()
-        val vendas = vendaDao.getAll()
-        val vendasComNomes = vendas.mapNotNull { venda ->
-            val produto = produtoDao.getById(venda.produtoId)
-            produto?.let { venda to it.nome }
+    // Carregar vendas do banco e associar nome do produto
+    fun carregarVendas() {
+        coroutineScope.launch {
+            val vendas = vendaDao.getAll()
+            val vendasComNomes = vendas.mapNotNull { venda ->
+                val produto = produtoDao.getById(venda.produtoId)
+                produto?.let { venda to it.nome }
+            }
+            vendasRegistradas = vendasComNomes
         }
-        vendasRegistradas = vendasComNomes
+    }
+
+    // Executa ao iniciar a tela
+    LaunchedEffect(Unit) {
+        carregarVendas()
     }
 
     fun registrarVenda() {
@@ -60,9 +67,11 @@ fun VendasScreen(navController: NavController) {
 
         if (estoqueItem.quantidade >= quantidadeInt) {
             coroutineScope.launch {
+                // Atualiza estoque
                 val novaQuantidade = estoqueItem.quantidade - quantidadeInt
                 estoqueDao.updateEstoqueItem(estoqueItem.copy(quantidade = novaQuantidade))
 
+                // Insere nova venda
                 val data = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 val novaVenda = Venda(
                     produtoId = estoqueItem.produtoId,
@@ -71,12 +80,10 @@ fun VendasScreen(navController: NavController) {
                 )
                 vendaDao.insert(novaVenda)
 
-                estoqueList = estoqueDao.getAll()
-                val produto = produtoDao.getById(estoqueItem.produtoId)
-                if (produto != null) {
-                    vendasRegistradas = listOf(novaVenda to produto.nome) + vendasRegistradas
-                }
+                // Atualiza lista de vendas e estoque
+                carregarVendas()
 
+                // Limpa campos
                 produtoSelecionado = null
                 quantidadeVenda = ""
             }
@@ -101,8 +108,6 @@ fun VendasScreen(navController: NavController) {
         ) {
             Text("Selecione o Produto")
             Spacer(modifier = Modifier.height(8.dp))
-
-            var fieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -142,7 +147,7 @@ fun VendasScreen(navController: NavController) {
                 }
             }
 
-
+            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = quantidadeVenda,
@@ -226,11 +231,4 @@ fun VendasScreen(navController: NavController) {
             }
         }
     }
-}
-
-@Composable
-@Preview
-fun PreviewVendasScreen() {
-    val navController = rememberNavController() // Create a NavController for the preview
-    VendasScreen(navController = navController)
 }

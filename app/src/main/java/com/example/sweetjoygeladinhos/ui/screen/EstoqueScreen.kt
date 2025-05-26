@@ -10,10 +10,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sweetjoygeladinhos.SweetJoyApp
-import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.EstoqueItem
+import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
+import com.example.sweetjoygeladinhos.model.Produto
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,28 +25,54 @@ fun EstoqueScreen(navController: NavController) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    var produtos by remember { mutableStateOf(emptyList<com.example.sweetjoygeladinhos.model.Produto>()) }
-    var estoque by remember { mutableStateOf(emptyList<EstoqueItemComProduto>()) }
+    // Observe flows diretamente
+    val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
+    val estoque by estoqueDao.getAll().collectAsState(initial = emptyList())
 
-    var selectedProduto by remember { mutableStateOf<com.example.sweetjoygeladinhos.model.Produto?>(null) }
+    var selectedProduto by remember { mutableStateOf<Produto?>(null) }
     var quantidade by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        produtos = produtoDao.getAll()
-        estoque = estoqueDao.getAll()
-    }
+    // Para edição: armazenar produtoId do item em edição
+    var editandoProdutoId by remember { mutableStateOf<Long?>(null) }
+
+    // Diálogo de exclusão
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var estoqueParaExcluir by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
 
     fun salvarEstoque() {
         val produto = selectedProduto ?: return
         val quantidadeInt = quantidade.toIntOrNull() ?: return
 
         coroutineScope.launch {
-            estoqueDao.insert(produto.produtoId, quantidadeInt)
-            estoque = estoqueDao.getAll()
+            if (editandoProdutoId != null) {
+                estoqueDao.updateEstoqueItem(
+                    EstoqueItem(
+                        produtoId = editandoProdutoId!!,
+                        quantidade = quantidadeInt
+                    )
+                )
+                editandoProdutoId = null
+            } else {
+                estoqueDao.insert(produto.produtoId, quantidadeInt)
+            }
             quantidade = ""
             selectedProduto = null
         }
+    }
+
+    fun confirmarExclusao(item: EstoqueItemComProduto) {
+        estoqueParaExcluir = item
+        showDeleteDialog = true
+    }
+
+    fun excluirEstoque() {
+        estoqueParaExcluir?.let { item ->
+            coroutineScope.launch {
+                estoqueDao.deleteEstoqueItem(item.item)
+            }
+        }
+        showDeleteDialog = false
     }
 
     Scaffold(
@@ -66,7 +92,10 @@ fun EstoqueScreen(navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Selecionar Produto", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = if (editandoProdutoId != null) "Editar Estoque" else "Adicionar Estoque",
+                style = MaterialTheme.typography.titleMedium
+            )
 
             ExposedDropdownMenuBox(
                 expanded = expanded,
@@ -108,7 +137,7 @@ fun EstoqueScreen(navController: NavController) {
                 onClick = { salvarEstoque() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Salvar Estoque")
+                Text(if (editandoProdutoId != null) "Atualizar Estoque" else "Salvar Estoque")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -127,12 +156,53 @@ fun EstoqueScreen(navController: NavController) {
                             Text("Produto: ${item.produto.nome}", style = MaterialTheme.typography.titleMedium)
                             Text("Sabor: ${item.produto.sabor}")
                             Text("Quantidade: ${item.item.quantidade}")
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        selectedProduto = item.produto
+                                        quantidade = item.item.quantidade.toString()
+                                        editandoProdutoId = item.produto.produtoId
+                                    }
+                                ) {
+                                    Text("Editar")
+                                }
+                                OutlinedButton(
+                                    onClick = { confirmarExclusao(item) },
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text("Excluir")
+                                }
+                            }
                         }
                     }
                 }
             }
-            }
-
         }
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            confirmButton = {
+                TextButton(onClick = { excluirEstoque() }) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Confirmar Exclusão") },
+            text = { Text("Tem certeza que deseja excluir este item do estoque?") }
+        )
+    }
+}

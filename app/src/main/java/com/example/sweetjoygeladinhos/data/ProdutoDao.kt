@@ -2,12 +2,13 @@ package com.example.sweetjoygeladinhos.data
 
 import androidx.room.*
 import com.example.sweetjoygeladinhos.model.Produto
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProdutoDao {
 
     @Query("SELECT * FROM Produto")
-    suspend fun getAll(): List<Produto>
+    fun getAll(): Flow<List<Produto>>
 
     @Insert
     suspend fun insert(produto: Produto)

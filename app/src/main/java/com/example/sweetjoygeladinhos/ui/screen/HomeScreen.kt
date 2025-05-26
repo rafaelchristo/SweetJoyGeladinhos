@@ -8,29 +8,35 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.google.android.gms.auth.api.identity.Identity
+import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.android.gms.auth.api.identity.Identity
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController) {
-    val context = LocalContext.current
+fun HomeScreen(navController: NavController, userViewModel: UserViewModel) {
     val firebaseAuth = FirebaseAuth.getInstance()
-    val oneTapClient = remember { Identity.getSignInClient(context) }
+    val oneTapClient = Identity.getSignInClient(LocalContext.current)
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val menuItems = listOf(
+    val adminMenu = listOf(
         "Produtos" to "produtos",
         "Estoque" to "estoque",
         "Vendas" to "vendas",
         "Pagamentos" to "pagamentos",
         "Receitas" to "receitas",
-        "Promocao" to "promocao"
+        "Promoção" to "promocao"
     )
+
+    val clientMenu = listOf(
+        "Fazer Pedido" to "produtos"
+    )
+
+    val menuItems = if (userViewModel.userType == com.example.sweetjoygeladinhos.model.UserType.ADMIN) adminMenu else clientMenu
 
     Scaffold(
         topBar = {
@@ -49,7 +55,7 @@ fun HomeScreen(navController: NavController) {
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 "Menu Principal",
@@ -61,21 +67,15 @@ fun HomeScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                menuItems.chunked(2).forEach { linha ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
+                menuItems.forEach { (text, route) ->
+                    Button(
+                        onClick = { navController.navigate(route) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 72.dp),
+                        shape = RoundedCornerShape(24.dp)
                     ) {
-                        linha.forEach { (text, route) ->
-                            HomeButton(
-                                text = text,
-                                onClick = { navController.navigate(route) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (linha.size < 2) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                        Text(text, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -86,7 +86,7 @@ fun HomeScreen(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Deseja sair?") },
-            text = { Text("Você será desconectado da sua conta.") },
+            text = { Text("Você será desconectado.") },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
@@ -104,26 +104,6 @@ fun HomeScreen(navController: NavController) {
                     Text("Cancelar")
                 }
             }
-        )
-    }
-}
-
-@Composable
-fun HomeButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 72.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        )
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1
         )
     }
 }

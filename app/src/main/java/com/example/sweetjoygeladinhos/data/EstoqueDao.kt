@@ -3,13 +3,13 @@ package com.example.sweetjoygeladinhos.data
 import androidx.room.*
 import com.example.sweetjoygeladinhos.model.EstoqueItem
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
+import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface EstoqueDao {
-
-    @Transaction
+    interface EstoqueDao {@Transaction
     @Query("SELECT * FROM EstoqueItem")
-    suspend fun getAll(): List<EstoqueItemComProduto>
+    fun getAll(): Flow<List<EstoqueItemComProduto>>
+
 
     @Query("SELECT * FROM EstoqueItem WHERE produtoId = :produtoId LIMIT 1")
     suspend fun getByProdutoId(produtoId: Long): EstoqueItem?
