@@ -9,7 +9,7 @@ import com.example.sweetjoygeladinhos.model.Venda
 
 @Database(
     entities = [Produto::class, EstoqueItem::class, Venda::class , Receita::class, Promocao::class],
-    version = 6 , exportSchema = false
+    version = 7 , exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun produtoDao(): ProdutoDao
