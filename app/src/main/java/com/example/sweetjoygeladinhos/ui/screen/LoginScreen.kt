@@ -28,7 +28,7 @@ import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
 
 @Composable
 fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
-    var selectedRole by remember { mutableStateOf(UserType.CLIENT) }
+    var selectedRole by remember { mutableStateOf(UserType.ADMIN) }
 
     val softPink = Color(0xFFFFC1CC)  // rosa muito suave
     val softRose = Color(0xFFFFD6E0)  // outro tom suave de rosa

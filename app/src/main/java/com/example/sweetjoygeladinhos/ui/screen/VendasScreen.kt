@@ -147,162 +147,161 @@ fun VendasScreen(navController: NavController) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = if (editandoVenda != null) "Editar Venda" else "Registrar Venda",
-                style = MaterialTheme.typography.titleMedium,
-                color = darkRose
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
-            ) {
-                OutlinedTextField(
-                    value = produtoSelecionado?.produto?.nome ?: "",
-                    onValueChange = {},
-                    label = { Text("Produto") },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
+            item {
+                Text(
+                    text = if (editandoVenda != null) "Editar Venda" else "Registrar Venda",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = darkRose
                 )
 
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onExpandedChange = { expanded = !expanded }
                 ) {
-                    estoqueList.forEach { item ->
-                        DropdownMenuItem(
-                            text = { Text(item.produto.sabor) },
-                            onClick = {
-                                produtoSelecionado = item
-                                expanded = false
-                            }
-                        )
+                    OutlinedTextField(
+                        value = produtoSelecionado?.produto?.nome ?: "",
+                        onValueChange = {},
+                        label = { Text("Produto") },
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        estoqueList.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item.produto.sabor) },
+                                onClick = {
+                                    produtoSelecionado = item
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
-            }
 
-            OutlinedTextField(
-                value = quantidadeVenda,
-                onValueChange = { quantidadeVenda = it },
-                label = { Text("Quantidade de Venda") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Button(
-                onClick = { registrarOuAtualizarVenda() },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = softPink,
-                    contentColor = Color.White
+                OutlinedTextField(
+                    value = quantidadeVenda,
+                    onValueChange = { quantidadeVenda = it },
+                    label = { Text("Quantidade de Venda") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
                 )
-            ) {
-                Text(if (editandoVenda != null) "Atualizar Venda" else "Registrar Venda")
+
+                Button(
+                    onClick = { registrarOuAtualizarVenda() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = softPink,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(if (editandoVenda != null) "Atualizar Venda" else "Registrar Venda")
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Text("Estoque Atual", style = MaterialTheme.typography.titleMedium, color = darkRose)
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            items(estoqueList) { item ->
+                val isLowStock = item.item.quantidade <= 10
+                val textColor = if (isLowStock) softRed else Color.Unspecified
 
-            Text("Estoque Atual", style = MaterialTheme.typography.titleMedium, color = darkRose)
-
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(estoqueList) { item ->
-                    val isLowStock = item.item.quantidade <= 10
-                    val textColor = if (isLowStock) softRed else Color.Unspecified
-
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = softRose
-                        )
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = softRose
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = item.produto.sabor, color = darkRose)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (isLowStock) {
-                                        Icon(
-                                            imageVector = Icons.Default.Warning,
-                                            contentDescription = "Baixo estoque",
-                                            tint = softRed,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-                                    Text(
-                                        text = "Qtd: ${item.item.quantidade}",
-                                        color = textColor
+                        Column {
+                            Text(text = item.produto.sabor, color = darkRose)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (isLowStock) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = "Baixo estoque",
+                                        tint = softRed,
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(4.dp))
                                 }
+                                Text(
+                                    text = "Qtd: ${item.item.quantidade}",
+                                    color = textColor
+                                )
                             }
                         }
                     }
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            item {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium, color = darkRose)
+            }
 
-            Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium, color = darkRose)
+            items(vendasRegistradas) { (venda, nomeProduto) ->
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = softRose
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Produto: $nomeProduto", color = darkRose)
+                        Text("Quantidade: ${venda.quantidade}")
+                        Text("Data da Venda: ${venda.dataVenda}")
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(vendasRegistradas) { (venda, nomeProduto) ->
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = softRose
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Produto: $nomeProduto", color = darkRose)
-                            Text("Quantidade: ${venda.quantidade}")
-                            Text("Data da Venda: ${venda.dataVenda}")
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    produtoSelecionado = estoqueList.find { it.item.produtoId == venda.produtoId }
+                                    quantidadeVenda = venda.quantidade.toString()
+                                    editandoVenda = venda
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = darkRose
+                                )
                             ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        produtoSelecionado = estoqueList.find { it.item.produtoId == venda.produtoId }
-                                        quantidadeVenda = venda.quantidade.toString()
-                                        editandoVenda = venda
-                                    },
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = darkRose
-                                    )
-                                ) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Editar")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Editar")
-                                }
+                                Icon(Icons.Default.Edit, contentDescription = "Editar")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Editar")
+                            }
 
-                                OutlinedButton(
-                                    onClick = { confirmarExclusao(venda) },
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Excluir")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Excluir")
-                                }
+                            OutlinedButton(
+                                onClick = { confirmarExclusao(venda) },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Excluir")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Excluir")
                             }
                         }
                     }
