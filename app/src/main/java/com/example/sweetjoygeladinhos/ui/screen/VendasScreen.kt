@@ -1,22 +1,20 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSize
 import androidx.navigation.NavController
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
@@ -28,23 +26,31 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VendasScreen(navController: NavController) {
+
+    val softPink = Color(0xFFFFC1CC)
+    val softRose = Color(0xFFFFD6E0)
+    val darkRose = Color(0xFF8B1E3F)
+    val softRed = Color(0xFFFFB3B3)
+
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
     val vendaDao = remember { SweetJoyApp.database.vendaDao() }
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Estoque é Flow - converte para State
     val estoqueList by estoqueDao.getAll().collectAsState(initial = emptyList())
-
-    // Lista de vendas com nome do produto
     var vendasRegistradas by remember { mutableStateOf<List<Pair<Venda, String>>>(emptyList()) }
 
     var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
     var quantidadeVenda by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-    var fieldSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
-    // Carregar vendas do banco e associar nome do produto
+    var editandoVenda by remember { mutableStateOf<Venda?>(null) }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var vendaParaExcluir by remember { mutableStateOf<Venda?>(null) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
     fun carregarVendas() {
         coroutineScope.launch {
             val vendas = vendaDao.getAll()
@@ -56,22 +62,47 @@ fun VendasScreen(navController: NavController) {
         }
     }
 
-    // Executa ao iniciar a tela
     LaunchedEffect(Unit) {
         carregarVendas()
     }
 
-    fun registrarVenda() {
-        val quantidadeInt = quantidadeVenda.toIntOrNull() ?: return
-        val estoqueItem = produtoSelecionado?.item ?: return
+    fun mostrarSnackbar(mensagem: String) {
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar(mensagem)
+        }
+    }
 
-        if (estoqueItem.quantidade >= quantidadeInt) {
-            coroutineScope.launch {
-                // Atualiza estoque
-                val novaQuantidade = estoqueItem.quantidade - quantidadeInt
-                estoqueDao.updateEstoqueItem(estoqueItem.copy(quantidade = novaQuantidade))
+    fun registrarOuAtualizarVenda() {
+        val quantidadeInt = quantidadeVenda.toIntOrNull()
+        val estoqueItem = produtoSelecionado?.item
 
-                // Insere nova venda
+        if (estoqueItem == null) {
+            mostrarSnackbar("Selecione um produto.")
+            return
+        }
+
+        if (quantidadeInt == null || quantidadeInt <= 0) {
+            mostrarSnackbar("Informe uma quantidade válida.")
+            return
+        }
+
+        if (quantidadeInt > estoqueItem.quantidade && editandoVenda == null) {
+            mostrarSnackbar("Quantidade maior que o estoque disponível.")
+            return
+        }
+
+        coroutineScope.launch {
+            if (editandoVenda != null) {
+                val vendaAtualizada = editandoVenda!!.copy(
+                    produtoId = estoqueItem.produtoId,
+                    quantidade = quantidadeInt
+                )
+                vendaDao.update(vendaAtualizada)
+                mostrarSnackbar("Venda atualizada com sucesso!")
+                editandoVenda = null
+            } else {
+                estoqueDao.updateEstoqueItem(estoqueItem.copy(quantidade = estoqueItem.quantidade - quantidadeInt))
+
                 val data = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 val novaVenda = Venda(
                     produtoId = estoqueItem.produtoId,
@@ -79,15 +110,29 @@ fun VendasScreen(navController: NavController) {
                     dataVenda = data
                 )
                 vendaDao.insert(novaVenda)
+                mostrarSnackbar("Venda registrada com sucesso!")
+            }
 
-                // Atualiza lista de vendas e estoque
+            carregarVendas()
+            produtoSelecionado = null
+            quantidadeVenda = ""
+        }
+    }
+
+    fun confirmarExclusao(venda: Venda) {
+        vendaParaExcluir = venda
+        showDeleteDialog = true
+    }
+
+    fun excluirVenda() {
+        vendaParaExcluir?.let { venda ->
+            coroutineScope.launch {
+                vendaDao.delete(venda)
+                mostrarSnackbar("Venda excluída com sucesso.")
                 carregarVendas()
-
-                // Limpa campos
-                produtoSelecionado = null
-                quantidadeVenda = ""
             }
         }
+        showDeleteDialog = false
     }
 
     Scaffold(
@@ -95,45 +140,44 @@ fun VendasScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Vendas", fontSize = 22.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = softPink,
+                    titleContentColor = Color.White
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Selecione o Produto")
-            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (editandoVenda != null) "Editar Venda" else "Registrar Venda",
+                style = MaterialTheme.typography.titleMedium,
+                color = darkRose
+            )
 
-            Box(modifier = Modifier.fillMaxWidth()) {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
                 OutlinedTextField(
                     value = produtoSelecionado?.produto?.nome ?: "",
                     onValueChange = {},
                     label = { Text("Produto") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { coordinates ->
-                            fieldSize = coordinates.size.toSize()
-                        }
-                        .clickable { expanded = true },
                     readOnly = true,
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Abrir seleção",
-                            modifier = Modifier.clickable { expanded = true }
-                        )
-                    }
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
                 )
 
-                DropdownMenu(
+                ExposedDropdownMenu(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.width(with(LocalDensity.current) { fieldSize.width.toDp() })
+                    onDismissRequest = { expanded = false }
                 ) {
                     estoqueList.forEach { item ->
                         DropdownMenuItem(
@@ -147,39 +191,40 @@ fun VendasScreen(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             OutlinedTextField(
                 value = quantidadeVenda,
                 onValueChange = { quantidadeVenda = it },
                 label = { Text("Quantidade de Venda") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             Button(
-                onClick = { registrarVenda() },
-                modifier = Modifier.fillMaxWidth()
+                onClick = { registrarOuAtualizarVenda() },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = softPink,
+                    contentColor = Color.White
+                )
             ) {
-                Text("Registrar Venda")
+                Text(if (editandoVenda != null) "Atualizar Venda" else "Registrar Venda")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            Text("Estoque Atual", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
+            Text("Estoque Atual", style = MaterialTheme.typography.titleMedium, color = darkRose)
 
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(estoqueList) { item ->
                     val isLowStock = item.item.quantidade <= 10
-                    val textColor = if (isLowStock) Color.Red else Color.Unspecified
+                    val textColor = if (isLowStock) softRed else Color.Unspecified
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        elevation = CardDefaults.cardElevation(2.dp)
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = softRose
+                        )
                     ) {
                         Row(
                             modifier = Modifier
@@ -188,13 +233,13 @@ fun VendasScreen(navController: NavController) {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(text = item.produto.sabor)
+                                Text(text = item.produto.sabor, color = darkRose)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isLowStock) {
                                         Icon(
                                             imageVector = Icons.Default.Warning,
                                             contentDescription = "Baixo estoque",
-                                            tint = Color.Red,
+                                            tint = softRed,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
@@ -210,25 +255,77 @@ fun VendasScreen(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium)
-            LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
+            Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium, color = darkRose)
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(vendasRegistradas) { (venda, nomeProduto) ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        elevation = CardDefaults.cardElevation(4.dp)
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = softRose
+                        )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Produto: $nomeProduto")
+                            Text("Produto: $nomeProduto", color = darkRose)
                             Text("Quantidade: ${venda.quantidade}")
                             Text("Data da Venda: ${venda.dataVenda}")
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        produtoSelecionado = estoqueList.find { it.item.produtoId == venda.produtoId }
+                                        quantidadeVenda = venda.quantidade.toString()
+                                        editandoVenda = venda
+                                    },
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = darkRose
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Editar")
+                                }
+
+                                OutlinedButton(
+                                    onClick = { confirmarExclusao(venda) },
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Excluir")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Excluir")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            confirmButton = {
+                TextButton(onClick = { excluirVenda() }) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Confirmar Exclusão") },
+            text = { Text("Tem certeza que deseja excluir esta venda?") }
+        )
     }
 }

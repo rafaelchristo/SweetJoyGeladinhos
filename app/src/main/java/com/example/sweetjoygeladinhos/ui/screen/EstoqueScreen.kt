@@ -3,40 +3,42 @@ package com.example.sweetjoygeladinhos.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItem
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Produto
 import kotlinx.coroutines.launch
-import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstoqueScreen(navController: NavController) {
+
+    val softPink = Color(0xFFFFC1CC)
+    val softRose = Color(0xFFFFD6E0)
+    val darkRose = Color(0xFF8B1E3F)
+    val softRed = Color(0xFFFFB3B3)
+
     val context = LocalContext.current
     val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
-
     val coroutineScope = rememberCoroutineScope()
 
-    // Observe flows diretamente
     val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
     val estoque by estoqueDao.getAll().collectAsState(initial = emptyList())
 
     var selectedProduto by remember { mutableStateOf<Produto?>(null) }
     var quantidade by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-
-    // Para edição: armazenar produtoId do item em edição
     var editandoProdutoId by remember { mutableStateOf<Long?>(null) }
-
-    // Diálogo de exclusão
     var showDeleteDialog by remember { mutableStateOf(false) }
     var estoqueParaExcluir by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
 
@@ -80,7 +82,8 @@ fun EstoqueScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Controle de Estoque", fontSize = 22.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = softPink,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -94,7 +97,8 @@ fun EstoqueScreen(navController: NavController) {
         ) {
             Text(
                 text = if (editandoProdutoId != null) "Editar Estoque" else "Adicionar Estoque",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = darkRose
             )
 
             ExposedDropdownMenuBox(
@@ -135,14 +139,19 @@ fun EstoqueScreen(navController: NavController) {
 
             Button(
                 onClick = { salvarEstoque() },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = softPink,
+                    contentColor = Color.White
+                )
             ) {
                 Text(if (editandoProdutoId != null) "Atualizar Estoque" else "Salvar Estoque")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Itens no Estoque", style = MaterialTheme.typography.titleLarge)
+            Text("Itens no Estoque", style = MaterialTheme.typography.titleLarge, color = darkRose)
 
             LazyColumn {
                 items(estoque) { item ->
@@ -150,10 +159,13 @@ fun EstoqueScreen(navController: NavController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        elevation = CardDefaults.cardElevation(4.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = softRose
+                        )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Produto: ${item.produto.nome}", style = MaterialTheme.typography.titleMedium)
+                            Text("Produto: ${item.produto.nome}", style = MaterialTheme.typography.titleMedium, color = darkRose)
                             Text("Sabor: ${item.produto.sabor}")
                             Text("Quantidade: ${item.item.quantidade}")
 
@@ -163,19 +175,29 @@ fun EstoqueScreen(navController: NavController) {
                                     .padding(top = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                OutlinedButton(
+                                Button(
                                     onClick = {
                                         selectedProduto = item.produto
                                         quantidade = item.item.quantidade.toString()
                                         editandoProdutoId = item.produto.produtoId
-                                    }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = softPink,
+                                        contentColor = Color.White
+                                    )
                                 ) {
                                     Text("Editar")
                                 }
-                                OutlinedButton(
+
+                                Button(
                                     onClick = { confirmarExclusao(item) },
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.error
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = softRed,
+                                        contentColor = Color.White
                                     )
                                 ) {
                                     Text("Excluir")
@@ -192,17 +214,21 @@ fun EstoqueScreen(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             confirmButton = {
-                TextButton(onClick = { excluirEstoque() }) {
-                    Text("Confirmar")
+                TextButton(
+                    onClick = { excluirEstoque() }
+                ) {
+                    Text("Confirmar", color = softRed)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
+                    Text("Cancelar", color = Color.Gray)
                 }
             },
-            title = { Text("Confirmar Exclusão") },
-            text = { Text("Tem certeza que deseja excluir este item do estoque?") }
+            title = { Text("Confirmar Exclusão", color = darkRose) },
+            text = { Text("Tem certeza que deseja excluir este item do estoque?") },
+            containerColor = softRose,
+            tonalElevation = 8.dp
         )
     }
 }

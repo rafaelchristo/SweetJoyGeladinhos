@@ -30,11 +30,11 @@ import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
 fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
     var selectedRole by remember { mutableStateOf(UserType.CLIENT) }
 
+    val softPink = Color(0xFFFFC1CC)  // rosa muito suave
+    val softRose = Color(0xFFFFD6E0)  // outro tom suave de rosa
+
     val gradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-        )
+        colors = listOf(softPink, softRose)
     )
 
     Box(
@@ -51,7 +51,7 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                 .animateContentSize(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                containerColor = Color.White.copy(alpha = 0.95f)
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
@@ -62,9 +62,8 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 👉 Aqui está a ilustração no topo
                 Image(
-                    painter = painterResource(id = R.drawable.login_illustration), // substitua com sua imagem
+                    painter = painterResource(id = R.drawable.login_illustration),
                     contentDescription = "Login Illustration",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -76,7 +75,7 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                 Text(
                     text = "Escolha o seu perfil",
                     style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color(0xFF8B1E3F)  // tom de rosa escuro para contraste
                 )
 
                 Row(
@@ -87,8 +86,9 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                         onClick = { selectedRole = UserType.ADMIN },
                         shape = CircleShape,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (selectedRole == UserType.ADMIN) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface
+                            contentColor = if (selectedRole == UserType.ADMIN)
+                                softPink
+                            else Color.Gray
                         ),
                         border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
                     ) {
@@ -105,8 +105,9 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                         onClick = { selectedRole = UserType.CLIENT },
                         shape = CircleShape,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (selectedRole == UserType.CLIENT) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface
+                            contentColor = if (selectedRole == UserType.CLIENT)
+                                softPink
+                            else Color.Gray
                         ),
                         border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
                     ) {
@@ -133,13 +134,13 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                         .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = softPink,
+                        contentColor = Color.White
                     )
                 ) {
                     Text(
                         text = "Entrar como ${selectedRole.name.lowercase().replaceFirstChar { it.uppercase() }}",
-                        style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp)
                     )
                 }
             }

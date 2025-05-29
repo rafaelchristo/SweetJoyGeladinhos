@@ -11,7 +11,9 @@ import com.example.sweetjoygeladinhos.ui.screen.EstoqueScreen
 import com.example.sweetjoygeladinhos.ui.screen.PromocaoScreen
 import com.example.sweetjoygeladinhos.ui.theme.SweetJoyGeladinhosTheme
 import com.example.sweetjoygeladinhos.model.UserType
+import com.example.sweetjoygeladinhos.ui.screen.SplashScreen
 import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
+
 
 @Composable
 fun MainScreen(navController: NavHostController, userViewModel: UserViewModel = viewModel()) {

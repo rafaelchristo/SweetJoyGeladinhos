@@ -8,14 +8,11 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -23,16 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Promocao
@@ -41,6 +34,11 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromocaoScreen(navController: NavController) {
+    // Esquema de cores
+    val softPink = Color(0xFFFFC1CC)
+    val softRose = Color(0xFFFFD6E0)
+    val darkRose = Color(0xFF8B1E3F)
+
     val context = LocalContext.current
     val promocaoDao = remember { SweetJoyApp.database.promocaoDao() }
     val coroutineScope = rememberCoroutineScope()
@@ -115,18 +113,22 @@ fun PromocaoScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Promoções", fontSize = 22.sp) },
+                title = { Text("Promoções", fontSize = 22.sp, color = Color.White) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = softPink
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                promocaoEmEdicao = null
-                titulo = ""; descricao = ""; validade = ""; imagemUri = null
-                showDialog = true
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    promocaoEmEdicao = null
+                    titulo = ""; descricao = ""; validade = ""; imagemUri = null
+                    showDialog = true
+                },
+                containerColor = softPink,
+                contentColor = Color.White
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Nova Promoção")
             }
         }
@@ -142,12 +144,19 @@ fun PromocaoScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = softRose
+                    ),
                     elevation = CardDefaults.cardElevation(6.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(promocao.titulo, style = MaterialTheme.typography.titleMedium)
-                        Text(promocao.descricao)
-                        Text("Validade: ${promocao.validade}")
+                        Text(
+                            promocao.titulo,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = darkRose
+                        )
+                        Text(promocao.descricao, color = Color.Black)
+                        Text("Validade: ${promocao.validade}", color = Color.Black)
 
                         promocao.imagemUri?.let {
                             Image(
@@ -174,12 +183,12 @@ fun PromocaoScreen(navController: NavController) {
                                 imagemUri = promocao.imagemUri
                                 showDialog = true
                             }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Editar")
+                                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = darkRose)
                             }
                             IconButton(onClick = {
                                 enviarWhatsApp(gerarMensagem(promocao))
                             }) {
-                                Icon(Icons.Default.Share, contentDescription = "Compartilhar")
+                                Icon(Icons.Default.Share, contentDescription = "Compartilhar", tint = darkRose)
                             }
                         }
                     }
@@ -192,12 +201,21 @@ fun PromocaoScreen(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
             confirmButton = {
-                TextButton(onClick = { salvarPromocao() }) { Text("Salvar") }
+                TextButton(onClick = { salvarPromocao() }) {
+                    Text("Salvar", color = darkRose)
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
             },
-            title = { Text(if (promocaoEmEdicao == null) "Nova Promoção" else "Editar Promoção") },
+            title = {
+                Text(
+                    if (promocaoEmEdicao == null) "Nova Promoção" else "Editar Promoção",
+                    color = darkRose
+                )
+            },
             text = {
                 Column {
                     OutlinedTextField(
@@ -219,7 +237,12 @@ fun PromocaoScreen(navController: NavController) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                    OutlinedButton(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = darkRose
+                        )
+                    ) {
                         Text(if (imagemUri != null) "Imagem Selecionada" else "Selecionar Imagem")
                     }
                 }

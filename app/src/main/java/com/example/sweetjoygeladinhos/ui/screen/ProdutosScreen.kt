@@ -24,17 +24,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
+import com.example.sweetjoygeladinhos.utils.saveImageToInternalStorage
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.InputStream
-import java.io.OutputStream
-import com.example.sweetjoygeladinhos.utils.saveImageToInternalStorage
+
+@Composable
+fun ProdutosScreen(navController: NavController) {
+    SweetJoyGeladinhosTheme {
+        ProdutosScreenContent(navController)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProdutosScreen(navController: NavController) {
+fun ProdutosScreenContent(navController: NavController) {
     val context = LocalContext.current
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
@@ -50,6 +56,8 @@ fun ProdutosScreen(navController: NavController) {
     var produtoParaExcluir by remember { mutableStateOf<Produto?>(null) }
     var imagemEmTelaCheia by remember { mutableStateOf<String?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -59,18 +67,21 @@ fun ProdutosScreen(navController: NavController) {
         }
     }
 
-    fun saveImageToInternalStorage(context: android.content.Context, uri: Uri): String {
-        val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-        val file = File(context.filesDir, "img_${System.currentTimeMillis()}.jpg")
-        val outputStream: OutputStream = file.outputStream()
-        inputStream?.copyTo(outputStream)
-        inputStream?.close()
-        outputStream.close()
-        return file.absolutePath
+    fun limparCampos() {
+        nome = ""
+        sabor = ""
+        preco = ""
+        imagemUri = null
+        produtoEmEdicao = null
     }
 
     fun salvarProduto() {
-        val precoDouble = preco.toDoubleOrNull() ?: return
+        val precoDouble = preco.toDoubleOrNull()
+        if (precoDouble == null) {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Preço inválido") }
+            return
+        }
+
         val produto = Produto(
             produtoId = produtoEmEdicao?.produtoId ?: 0L,
             nome = nome,
@@ -78,6 +89,7 @@ fun ProdutosScreen(navController: NavController) {
             preco = precoDouble,
             imagemUri = imagemUri
         )
+
         coroutineScope.launch {
             if (produtoEmEdicao == null) {
                 produtoDao.insert(produto)
@@ -85,8 +97,7 @@ fun ProdutosScreen(navController: NavController) {
                 produtoDao.update(produto)
             }
             showDialog = false
-            nome = ""; sabor = ""; preco = ""; imagemUri = null
-            produtoEmEdicao = null
+            limparCampos()
         }
     }
 
@@ -108,19 +119,29 @@ fun ProdutosScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                produtoEmEdicao = null
-                nome = ""; sabor = ""; preco = ""; imagemUri = null
-                showDialog = true
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    limparCampos()
+                    showDialog = true
+                },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar Produto")
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier
@@ -132,58 +153,22 @@ fun ProdutosScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(produtos) { produto ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { imagemEmTelaCheia = produto.imagemUri },
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        produto.imagemUri?.let { uri ->
-                            Image(
-                                painter = rememberAsyncImagePainter(File(uri)),
-                                contentDescription = "Imagem do Produto",
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .clickable { imagemEmTelaCheia = uri },
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(text = produto.nome, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text(text = produto.sabor, fontSize = 14.sp)
-                        Text(text = "R$ %.2f".format(produto.preco), fontSize = 14.sp)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            IconButton(onClick = {
-                                produtoEmEdicao = produto
-                                nome = produto.nome
-                                sabor = produto.sabor
-                                preco = produto.preco.toString()
-                                imagemUri = produto.imagemUri
-                                showDialog = true
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Editar")
-                            }
-                            IconButton(onClick = {
-                                produtoParaExcluir = produto
-                                showDeleteConfirm = true
-                            }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Excluir")
-                            }
-                        }
-                    }
-                }
+                ProdutoCard(
+                    produto = produto,
+                    onEdit = {
+                        produtoEmEdicao = produto
+                        nome = produto.nome
+                        sabor = produto.sabor
+                        preco = produto.preco.toString()
+                        imagemUri = produto.imagemUri
+                        showDialog = true
+                    },
+                    onDelete = {
+                        produtoParaExcluir = produto
+                        showDeleteConfirm = true
+                    },
+                    onImageClick = { imagemEmTelaCheia = produto.imagemUri }
+                )
             }
         }
     }
@@ -193,35 +178,30 @@ fun ProdutosScreen(navController: NavController) {
             onDismissRequest = { showDialog = false },
             title = { Text(if (produtoEmEdicao == null) "Adicionar Produto" else "Editar Produto") },
             text = {
-                Column {
-                    OutlinedTextField(
-                        value = nome,
-                        onValueChange = { nome = it },
-                        label = { Text("Nome") }
-                    )
-                    OutlinedTextField(
-                        value = sabor,
-                        onValueChange = { sabor = it },
-                        label = { Text("Sabor") }
-                    )
-                    OutlinedTextField(
-                        value = preco,
-                        onValueChange = { preco = it },
-                        label = { Text("Preço") }
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = nome, onValueChange = { nome = it }, label = { Text("Nome") })
+                    OutlinedTextField(value = sabor, onValueChange = { sabor = it }, label = { Text("Sabor") })
+                    OutlinedTextField(value = preco, onValueChange = { preco = it }, label = { Text("Preço") })
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = { imagePickerLauncher.launch("image/*") }) {
+                        FilledTonalButton(onClick = { imagePickerLauncher.launch("image/*") }) {
                             Text("Selecionar Imagem")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        imagemUri?.let {
-                            Text(text = "Imagem selecionada", fontSize = 12.sp)
+                        imagemUri?.let { uri ->
+                            Image(
+                                painter = rememberAsyncImagePainter(File(uri)),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                            )
                         }
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = { salvarProduto() }) {
+                FilledTonalButton(onClick = { salvarProduto() }) {
                     Text("Salvar")
                 }
             },
@@ -229,7 +209,8 @@ fun ProdutosScreen(navController: NavController) {
                 OutlinedButton(onClick = { showDialog = false }) {
                     Text("Cancelar")
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -239,7 +220,7 @@ fun ProdutosScreen(navController: NavController) {
             title = { Text("Confirmar exclusão") },
             text = { Text("Tem certeza que deseja excluir este produto?") },
             confirmButton = {
-                Button(onClick = { deletarProduto() }) {
+                FilledTonalButton(onClick = { deletarProduto() }) {
                     Text("Excluir")
                 }
             },
@@ -247,11 +228,12 @@ fun ProdutosScreen(navController: NavController) {
                 OutlinedButton(onClick = { showDeleteConfirm = false }) {
                     Text("Cancelar")
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
-    if (imagemEmTelaCheia != null) {
+    imagemEmTelaCheia?.let { uri ->
         AlertDialog(
             onDismissRequest = { imagemEmTelaCheia = null },
             confirmButton = {
@@ -260,17 +242,73 @@ fun ProdutosScreen(navController: NavController) {
                 }
             },
             text = {
-                imagemEmTelaCheia?.let { uri ->
-                    Image(
-                        painter = rememberAsyncImagePainter(File(uri)),
-                        contentDescription = "Imagem em Tela Cheia",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                Image(
+                    painter = rememberAsyncImagePainter(File(uri)),
+                    contentDescription = "Imagem em Tela Cheia",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
+                    contentScale = ContentScale.Crop
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+}
+
+@Composable
+fun ProdutoCard(
+    produto: Produto,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onImageClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onImageClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            produto.imagemUri?.let { uri ->
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(File(uri))
+                            .crossfade(true)
+                            .error(android.R.drawable.stat_notify_error)
+                            .build()
+                    ),
+                    contentDescription = "Imagem do Produto",
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { onImageClick() },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(produto.nome, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(produto.sabor, fontSize = 14.sp)
+            Text("R$ %.2f".format(produto.preco), fontSize = 14.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Excluir")
                 }
             }
-        )
+        }
     }
 }

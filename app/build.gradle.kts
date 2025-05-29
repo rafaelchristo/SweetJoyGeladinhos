@@ -82,6 +82,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.accompanist:accompanist-pager:0.33.2-alpha")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.33.2-alpha")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries
 
