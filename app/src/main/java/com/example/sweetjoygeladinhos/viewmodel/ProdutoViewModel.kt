@@ -18,47 +18,81 @@ class ProdutoViewModel : ViewModel() {
     private val _erro = MutableStateFlow<String?>(null)
     val erro: StateFlow<String?> get() = _erro
 
+    private val _carregando = MutableStateFlow(false)
+    val carregando: StateFlow<Boolean> get() = _carregando
+
     fun carregarProdutos() {
         viewModelScope.launch {
-            val resultado = repository.getProdutos()
-            if (resultado.isSuccess) {
-                _produtos.value = resultado.getOrNull() ?: emptyList()
-                _erro.value = null
-            } else {
-                _erro.value = resultado.exceptionOrNull()?.message ?: "Erro desconhecido"
+            _carregando.value = true
+            try {
+                val resultado = repository.getProdutos()
+                if (resultado.isSuccess) {
+                    _produtos.value = resultado.getOrNull() ?: emptyList()
+                    _erro.value = null
+                } else {
+                    _erro.value = resultado.exceptionOrNull()?.message ?: "Erro desconhecido"
+                }
+            } catch (e: Exception) {
+                _erro.value = e.message ?: "Erro ao carregar produtos"
+            } finally {
+                _carregando.value = false
             }
         }
     }
 
     fun adicionarProduto(produto: Produto) {
         viewModelScope.launch {
-            val resultado = repository.addProduto(produto)
-            if (resultado.isSuccess) {
-                carregarProdutos()
-            } else {
-                _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao adicionar produto"
+            _carregando.value = true
+            try {
+                val resultado = repository.addProduto(produto)
+                if (resultado.isSuccess) {
+                    carregarProdutos()
+                    _erro.value = null
+                } else {
+                    _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao adicionar produto"
+                }
+            } catch (e: Exception) {
+                _erro.value = e.message ?: "Erro ao adicionar produto"
+            } finally {
+                _carregando.value = false
             }
         }
     }
 
     fun atualizarProduto(produto: Produto) {
         viewModelScope.launch {
-            val resultado = repository.updateProduto(produto)
-            if (resultado.isSuccess) {
-                carregarProdutos()
-            } else {
-                _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao atualizar produto"
+            _carregando.value = true
+            try {
+                val resultado = repository.updateProduto(produto)
+                if (resultado.isSuccess) {
+                    carregarProdutos()
+                    _erro.value = null
+                } else {
+                    _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao atualizar produto"
+                }
+            } catch (e: Exception) {
+                _erro.value = e.message ?: "Erro ao atualizar produto"
+            } finally {
+                _carregando.value = false
             }
         }
     }
 
     fun deletarProduto(produtoId: String) {
         viewModelScope.launch {
-            val resultado = repository.deleteProduto(produtoId)
-            if (resultado.isSuccess) {
-                carregarProdutos()
-            } else {
-                _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao deletar produto"
+            _carregando.value = true
+            try {
+                val resultado = repository.deleteProduto(produtoId)
+                if (resultado.isSuccess) {
+                    carregarProdutos()
+                    _erro.value = null
+                } else {
+                    _erro.value = resultado.exceptionOrNull()?.message ?: "Erro ao deletar produto"
+                }
+            } catch (e: Exception) {
+                _erro.value = e.message ?: "Erro ao deletar produto"
+            } finally {
+                _carregando.value = false
             }
         }
     }
