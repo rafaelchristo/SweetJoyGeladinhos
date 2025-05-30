@@ -3,232 +3,229 @@ package com.example.sweetjoygeladinhos.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.example.sweetjoygeladinhos.SweetJoyApp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.sweetjoygeladinhos.model.EstoqueItem
-import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
-import com.example.sweetjoygeladinhos.model.Produto
-import kotlinx.coroutines.launch
+import com.example.sweetjoygeladinhos.viewmodel.EstoqueViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EstoqueScreen(navController: NavController) {
+fun EstoqueScreen(
+    navController: NavHostController,
+    viewModel: EstoqueViewModel = viewModel()
+) {
+    val estoque by viewModel.estoque.collectAsState()
+    val erro by viewModel.erro.collectAsState()
 
-    val softPink = Color(0xFFFFC1CC)
-    val softRose = Color(0xFFFFD6E0)
-    val darkRose = Color(0xFF8B1E3F)
-    val softRed = Color(0xFFFFB3B3)
-
-    val context = LocalContext.current
-    val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
-    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
-    val coroutineScope = rememberCoroutineScope()
-
-    val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
-    val estoque by estoqueDao.getAll().collectAsState(initial = emptyList())
-
-    var selectedProduto by remember { mutableStateOf<Produto?>(null) }
+    var produtoId by remember { mutableStateOf("") }
     var quantidade by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-    var editandoProdutoId by remember { mutableStateOf<Long?>(null) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var estoqueParaExcluir by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
+    var sabor by remember { mutableStateOf("") }
 
-    fun salvarEstoque() {
-        val produto = selectedProduto ?: return
-        val quantidadeInt = quantidade.toIntOrNull() ?: return
+    var itemEditando by remember { mutableStateOf<EstoqueItem?>(null) }
+    var itemExcluindo by remember { mutableStateOf<EstoqueItem?>(null) }
 
-        coroutineScope.launch {
-            if (editandoProdutoId != null) {
-                estoqueDao.updateEstoqueItem(
-                    EstoqueItem(
-                        produtoId = editandoProdutoId!!,
-                        quantidade = quantidadeInt
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("Gerenciar Estoque", style = MaterialTheme.typography.headlineMedium)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = produtoId,
+            onValueChange = { produtoId = it },
+            label = { Text("ID do Produto") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = quantidade,
+            onValueChange = { quantidade = it },
+            label = { Text("Quantidade") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = sabor,
+            onValueChange = { sabor = it },
+            label = { Text("Sabor") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(
+            onClick = {
+                if (produtoId.isNotBlank() && quantidade.isNotBlank()) {
+                    val item = EstoqueItem(
+                        produtoId = produtoId,
+                        quantidade = quantidade.toIntOrNull() ?: 0,
+                        sabor = sabor
                     )
-                )
-                editandoProdutoId = null
-            } else {
-                estoqueDao.insert(produto.produtoId, quantidadeInt)
-            }
-            quantidade = ""
-            selectedProduto = null
-        }
-    }
-
-    fun confirmarExclusao(item: EstoqueItemComProduto) {
-        estoqueParaExcluir = item
-        showDeleteDialog = true
-    }
-
-    fun excluirEstoque() {
-        estoqueParaExcluir?.let { item ->
-            coroutineScope.launch {
-                estoqueDao.deleteEstoqueItem(item.item)
-            }
-        }
-        showDeleteDialog = false
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Controle de Estoque", fontSize = 22.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = softPink,
-                    titleContentColor = Color.White
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
+                    viewModel.adicionarEstoqueItem(item)
+                    produtoId = ""
+                    quantidade = ""
+                    sabor = ""
+                }
+            },
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         ) {
-            Text(
-                text = if (editandoProdutoId != null) "Editar Estoque" else "Adicionar Estoque",
-                style = MaterialTheme.typography.titleMedium,
-                color = darkRose
-            )
+            Text("Adicionar ao Estoque")
+        }
 
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
-            ) {
-                OutlinedTextField(
-                    readOnly = true,
-                    value = selectedProduto?.nome ?: "",
-                    onValueChange = {},
-                    label = { Text("Produto") },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Itens no Estoque", style = MaterialTheme.typography.titleMedium)
+
+        if (erro != null) {
+            Text("Erro: $erro", color = MaterialTheme.colorScheme.error)
+        }
+
+        LazyColumn {
+            items(estoque) { item ->
+                EstoqueItemCard(
+                    item = item,
+                    onDelete = { itemExcluindo = item },
+                    onEdit = { itemEditando = it }
                 )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    produtos.forEach { produto ->
-                        DropdownMenuItem(
-                            text = { Text("${produto.nome} (${produto.sabor})") },
-                            onClick = {
-                                selectedProduto = produto
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            OutlinedTextField(
-                value = quantidade,
-                onValueChange = { quantidade = it },
-                label = { Text("Quantidade") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Button(
-                onClick = { salvarEstoque() },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = softPink,
-                    contentColor = Color.White
-                )
-            ) {
-                Text(if (editandoProdutoId != null) "Atualizar Estoque" else "Salvar Estoque")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Itens no Estoque", style = MaterialTheme.typography.titleLarge, color = darkRose)
-
-            LazyColumn {
-                items(estoque) { item ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = softRose
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Produto: ${item.produto.nome}", style = MaterialTheme.typography.titleMedium, color = darkRose)
-                            Text("Sabor: ${item.produto.sabor}")
-                            Text("Quantidade: ${item.item.quantidade}")
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        selectedProduto = item.produto
-                                        quantidade = item.item.quantidade.toString()
-                                        editandoProdutoId = item.produto.produtoId
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(24.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = softPink,
-                                        contentColor = Color.White
-                                    )
-                                ) {
-                                    Text("Editar")
-                                }
-
-                                Button(
-                                    onClick = { confirmarExclusao(item) },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(24.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = softRed,
-                                        contentColor = Color.White
-                                    )
-                                ) {
-                                    Text("Excluir")
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
 
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            confirmButton = {
-                TextButton(
-                    onClick = { excluirEstoque() }
-                ) {
-                    Text("Confirmar", color = softRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar", color = Color.Gray)
-                }
-            },
-            title = { Text("Confirmar Exclusão", color = darkRose) },
-            text = { Text("Tem certeza que deseja excluir este item do estoque?") },
-            containerColor = softRose,
-            tonalElevation = 8.dp
+    itemEditando?.let { item ->
+        EditarEstoqueDialog(
+            item = item,
+            onDismiss = { itemEditando = null },
+            onConfirm = { atualizado ->
+                viewModel.atualizarEstoqueItem(atualizado)
+                itemEditando = null
+            }
         )
     }
+
+    itemExcluindo?.let { item ->
+        ConfirmarExclusaoDialog(
+            item = item,
+            onDismiss = { itemExcluindo = null },
+            onConfirm = {
+                viewModel.excluirEstoqueItem(item.produtoId)
+                itemExcluindo = null
+            }
+        )
+    }
+}
+
+@Composable
+fun EstoqueItemCard(
+    item: EstoqueItem,
+    onDelete: () -> Unit,
+    onEdit: (EstoqueItem) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Produto ID: ${item.produtoId}")
+                Text("Quantidade: ${item.quantidade}")
+                Text("Sabor: ${item.sabor}")
+            }
+            Row {
+                IconButton(onClick = { onEdit(item) }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Excluir")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditarEstoqueDialog(
+    item: EstoqueItem,
+    onDismiss: () -> Unit,
+    onConfirm: (EstoqueItem) -> Unit
+) {
+    var quantidade by remember { mutableStateOf(item.quantidade.toString()) }
+    var sabor by remember { mutableStateOf(item.sabor) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = {
+                val atualizado = item.copy(
+                    quantidade = quantidade.toIntOrNull() ?: item.quantidade,
+                    sabor = sabor
+                )
+                onConfirm(atualizado)
+            }) {
+                Text("Salvar")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+        title = { Text("Editar Estoque") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = quantidade,
+                    onValueChange = { quantidade = it },
+                    label = { Text("Quantidade") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = sabor,
+                    onValueChange = { sabor = it },
+                    label = { Text("Sabor") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun ConfirmarExclusaoDialog(
+    item: EstoqueItem,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Excluir")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+        title = { Text("Confirmar Exclusão") },
+        text = { Text("Tem certeza que deseja excluir o item de produto ID '${item.produtoId}'?") }
+    )
 }

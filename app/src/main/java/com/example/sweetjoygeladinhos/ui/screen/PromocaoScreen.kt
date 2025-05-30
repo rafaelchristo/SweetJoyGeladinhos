@@ -1,194 +1,167 @@
-package com.example.sweetjoygeladinhos.ui.screen
+package com.example.sweetjoygeladinhos.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.items //
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
-import com.example.sweetjoygeladinhos.SweetJoyApp
+import androidx.navigation.NavHostController
 import com.example.sweetjoygeladinhos.model.Promocao
-import kotlinx.coroutines.launch
+import com.example.sweetjoygeladinhos.viewmodel.PromocaoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromocaoScreen(navController: NavController) {
-    // Esquema de cores
-    val softPink = Color(0xFFFFC1CC)
-    val softRose = Color(0xFFFFD6E0)
-    val darkRose = Color(0xFF8B1E3F)
-
-    val context = LocalContext.current
-    val promocaoDao = remember { SweetJoyApp.database.promocaoDao() }
-    val coroutineScope = rememberCoroutineScope()
-
-    var promocoes by remember { mutableStateOf(emptyList<Promocao>()) }
+fun PromocaoScreen(
+    navController: NavHostController,
+    viewModel: PromocaoViewModel
+) {
+    val promocoes by viewModel.promocoes.collectAsState()
+    val erro by viewModel.erro.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
+    var promocaoParaExcluir by remember { mutableStateOf<Promocao?>(null) }
+    var promocaoEditando by remember { mutableStateOf<Promocao?>(null) }
+
+    // Estados do formulário
     var titulo by remember { mutableStateOf("") }
     var descricao by remember { mutableStateOf("") }
     var validade by remember { mutableStateOf("") }
     var imagemUri by remember { mutableStateOf<String?>(null) }
-    var promocaoEmEdicao by remember { mutableStateOf<Promocao?>(null) }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> imagemUri = uri?.toString() }
-
-    fun carregarPromocoes() {
-        coroutineScope.launch {
-            promocoes = promocaoDao.getAll()
+    LaunchedEffect(promocaoEditando) {
+        promocaoEditando?.let {
+            titulo = it.titulo
+            descricao = it.descricao
+            validade = it.validade
+            imagemUri = it.imagemUri
+        } ?: run {
+            titulo = ""
+            descricao = ""
+            validade = ""
+            imagemUri = null
         }
     }
 
-    fun salvarPromocao() {
-        val promocao = Promocao(
-            id = promocaoEmEdicao?.id ?: 0,
-            titulo = titulo,
-            descricao = descricao,
-            validade = validade,
-            imagemUri = imagemUri
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(text = "Promoções", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Formulário
+        OutlinedTextField(
+            value = titulo,
+            onValueChange = { titulo = it },
+            label = { Text("Título") },
+            modifier = Modifier.fillMaxWidth()
         )
-        coroutineScope.launch {
-            if (promocaoEmEdicao == null) {
-                promocaoDao.insert(promocao)
-            } else {
-                promocaoDao.update(promocao)
-            }
-            carregarPromocoes()
-            showDialog = false
-            titulo = ""; descricao = ""; validade = ""; imagemUri = null
-            promocaoEmEdicao = null
-        }
-    }
+        OutlinedTextField(
+            value = descricao,
+            onValueChange = { descricao = it },
+            label = { Text("Descrição") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = validade,
+            onValueChange = { validade = it },
+            label = { Text("Validade") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = imagemUri ?: "",
+            onValueChange = { imagemUri = it },
+            label = { Text("Imagem URI") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
-    fun gerarMensagem(promocao: Promocao): String {
-        return """
-            🎉 *${promocao.titulo}* 🎉
-            
-            ${promocao.descricao}
-            
-            ✅ Válido até: ${promocao.validade}
-            
-            Aproveite e faça seu pedido! 😋
-        """.trimIndent()
-    }
+        Spacer(modifier = Modifier.height(8.dp))
 
-    fun enviarWhatsApp(mensagem: String) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, mensagem)
-            setPackage("com.whatsapp")
-        }
-        try {
-            context.startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, "WhatsApp não está instalado.", Toast.LENGTH_SHORT).show()
-        }
-    }
+        Row {
+            Button(onClick = {
+                if (titulo.isBlank() || descricao.isBlank() || validade.isBlank()) return@Button
 
-    LaunchedEffect(Unit) { carregarPromocoes() }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Promoções", fontSize = 22.sp, color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = softPink
+                val promocao = promocaoEditando?.copy(
+                    titulo = titulo,
+                    descricao = descricao,
+                    validade = validade,
+                    imagemUri = imagemUri
+                ) ?: Promocao(
+                    titulo = titulo,
+                    descricao = descricao,
+                    validade = validade,
+                    imagemUri = imagemUri
                 )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    promocaoEmEdicao = null
-                    titulo = ""; descricao = ""; validade = ""; imagemUri = null
-                    showDialog = true
-                },
-                containerColor = softPink,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nova Promoção")
+
+                if (promocaoEditando == null) {
+                    viewModel.adicionarPromocao(promocao)
+                } else {
+                    viewModel.atualizarPromocao(promocao)
+                    promocaoEditando = null
+                }
+
+                // Limpa formulário
+                titulo = ""
+                descricao = ""
+                validade = ""
+                imagemUri = null
+            }) {
+                Text(if (promocaoEditando == null) "Adicionar" else "Salvar")
+            }
+
+            if (promocaoEditando != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = {
+                    promocaoEditando = null
+                    titulo = ""
+                    descricao = ""
+                    validade = ""
+                    imagemUri = null
+                }) {
+                    Text("Cancelar")
+                }
             }
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (erro != null) {
+            Text(text = "Erro: $erro", color = MaterialTheme.colorScheme.error)
+        }
+
+        LazyColumn {
             items(promocoes) { promocao ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = softRose
-                    ),
-                    elevation = CardDefaults.cardElevation(6.dp)
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            promocao.titulo,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = darkRose
-                        )
-                        Text(promocao.descricao, color = Color.Black)
-                        Text("Validade: ${promocao.validade}", color = Color.Black)
-
-                        promocao.imagemUri?.let {
-                            Image(
-                                painter = rememberAsyncImagePainter(it),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .padding(top = 8.dp),
-                                contentScale = ContentScale.Crop
-                            )
+                    Row(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(promocao.titulo, style = MaterialTheme.typography.titleMedium)
+                            Text(promocao.descricao)
+                            Text("Validade: ${promocao.validade}", style = MaterialTheme.typography.bodySmall)
                         }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            IconButton(onClick = {
-                                promocaoEmEdicao = promocao
-                                titulo = promocao.titulo
-                                descricao = promocao.descricao
-                                validade = promocao.validade
-                                imagemUri = promocao.imagemUri
+                        Row {
+                            TextButton(onClick = { promocaoEditando = promocao }) {
+                                Text("Editar")
+                            }
+                            TextButton(onClick = {
+                                promocaoParaExcluir = promocao
                                 showDialog = true
                             }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = darkRose)
-                            }
-                            IconButton(onClick = {
-                                enviarWhatsApp(gerarMensagem(promocao))
-                            }) {
-                                Icon(Icons.Default.Share, contentDescription = "Compartilhar", tint = darkRose)
+                                Text("Excluir", color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -197,54 +170,24 @@ fun PromocaoScreen(navController: NavController) {
         }
     }
 
-    if (showDialog) {
+    if (showDialog && promocaoParaExcluir != null) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
+            title = { Text("Confirmar exclusão") },
+            text = { Text("Tem certeza que deseja excluir a promoção \"${promocaoParaExcluir?.titulo}\"?") },
             confirmButton = {
-                TextButton(onClick = { salvarPromocao() }) {
-                    Text("Salvar", color = darkRose)
+                TextButton(onClick = {
+                    promocaoParaExcluir?.let {
+                        viewModel.deletarPromocao(it.id)
+                    }
+                    showDialog = false
+                }) {
+                    Text("Sim")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDialog = false }) {
-                    Text("Cancelar", color = Color.Gray)
-                }
-            },
-            title = {
-                Text(
-                    if (promocaoEmEdicao == null) "Nova Promoção" else "Editar Promoção",
-                    color = darkRose
-                )
-            },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = titulo,
-                        onValueChange = { titulo = it },
-                        label = { Text("Título") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = descricao,
-                        onValueChange = { descricao = it },
-                        label = { Text("Descrição") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = validade,
-                        onValueChange = { validade = it },
-                        label = { Text("Validade") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = darkRose
-                        )
-                    ) {
-                        Text(if (imagemUri != null) "Imagem Selecionada" else "Selecionar Imagem")
-                    }
+                    Text("Não")
                 }
             }
         )

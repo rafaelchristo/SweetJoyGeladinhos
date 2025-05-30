@@ -10,26 +10,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Venda
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraficoVendasScreen(navController: NavController) {
 
-    val vendaDao = remember { SweetJoyApp.database.vendaDao() }
-    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
+    val firestore = FirebaseFirestore.getInstance()
     val coroutineScope = rememberCoroutineScope()
 
     var vendasRegistradas by remember {
-        mutableStateOf<List<Triple<Venda, String, Long>>>(emptyList())
+        mutableStateOf<List<Triple<Venda, String, String>>>(emptyList())
     }
 
     // Lista de cores para diferenciar os produtos
@@ -45,12 +44,29 @@ fun GraficoVendasScreen(navController: NavController) {
 
     fun carregarVendas() {
         coroutineScope.launch {
-            val vendas = vendaDao.getAll()
-            val vendasComNomes = vendas.mapNotNull { venda ->
-                val produto = produtoDao.getById(venda.produtoId)
-                produto?.let { Triple(venda, it.nome, venda.produtoId) }
+            try {
+                val vendasSnapshot = firestore.collection("vendas").get().await()
+                val vendas = vendasSnapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Venda::class.java)
+                }
+
+                val produtosSnapshot = firestore.collection("produtos").get().await()
+                val produtosMap = produtosSnapshot.documents.associateBy(
+                    { it.id },
+                    { it.getString("nome") ?: "Desconhecido" }
+                )
+
+                val vendasComNomes = vendas.mapNotNull { venda ->
+                    val nomeProduto = produtosMap[venda.produtoId]
+                    nomeProduto?.let {
+                        Triple(venda, it, venda.produtoId)
+                    }
+                }
+
+                vendasRegistradas = vendasComNomes
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            vendasRegistradas = vendasComNomes
         }
     }
 

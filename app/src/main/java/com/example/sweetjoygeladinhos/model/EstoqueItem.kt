@@ -1,18 +1,8 @@
 package com.example.sweetjoygeladinhos.model
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
-
-@Entity(
-    foreignKeys = [ForeignKey(
-        entity = Produto::class,
-        parentColumns = ["produtoId"],
-        childColumns = ["produtoId"],
-        onDelete = ForeignKey.CASCADE
-    )]
-)
 data class EstoqueItem(
-    @PrimaryKey val produtoId: Long,
-    val quantidade: Int
+    val id: String = "",         // Firestore usará o document ID, pode armazenar aqui
+    val produtoId: String = "",
+    val quantidade: Int = 0,
+    val sabor: String = ""       // Adicione o campo 'sabor' se for necessário na tela
 )
