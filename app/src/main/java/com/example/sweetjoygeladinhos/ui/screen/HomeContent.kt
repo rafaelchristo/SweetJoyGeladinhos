@@ -24,24 +24,21 @@ fun HomeContent(navController: NavController, userViewModel: UserViewModel) {
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    // Menu apenas para administradores
     val adminMenu = listOf(
         "Produtos" to "produtos",
         "Estoque" to "estoque",
         "Vendas" to "vendas",
         "Pagamentos" to "pagamentos",
         "Receitas" to "receitas",
-        "Promoção" to "promocao"
+        "Promoção" to "promocao",
+        "Fazer Pedido" to "pedidos"
     )
 
-    val clientMenu = listOf(
-        "Fazer Pedido" to "produtos"
-    )
+    val menuItems = adminMenu
 
-    val menuItems = if (userViewModel.userType == com.example.sweetjoygeladinhos.model.UserType.ADMIN) adminMenu else clientMenu
-
-    // Definição das cores rosa suave
-    val softPink = Color(0xFFFFC1CC)  // rosa muito suave
-    val softRose = Color(0xFFFFD6E0)  // outro tom suave de rosa
+    val softPink = Color(0xFFFFC1CC)
+    val darkRose = Color(0xFF8B1E3F)
 
     Scaffold(
         topBar = {
@@ -71,7 +68,7 @@ fun HomeContent(navController: NavController, userViewModel: UserViewModel) {
                 "Menu Principal",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 16.dp),
-                color = Color(0xFF8B1E3F)  // rosa escuro para contraste
+                color = darkRose
             )
 
             Column(
@@ -100,7 +97,7 @@ fun HomeContent(navController: NavController, userViewModel: UserViewModel) {
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Deseja sair?", color = Color(0xFF8B1E3F)) },
+            title = { Text("Deseja sair?", color = darkRose) },
             text = { Text("Você será desconectado.") },
             confirmButton = {
                 TextButton(onClick = {

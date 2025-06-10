@@ -7,8 +7,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ProdutoDao {
 
-    @Query("SELECT * FROM Produto")
+    @Query("SELECT * FROM produto")
     fun getAll(): Flow<List<Produto>>
+
+    @Query("SELECT * FROM produto")
+    suspend fun getAllNow(): List<Produto>  // método para consultas suspensas, sem Flow
 
     @Insert
     suspend fun insert(produto: Produto)
@@ -19,6 +22,6 @@ interface ProdutoDao {
     @Delete
     suspend fun delete(produto: Produto)
 
-    @Query("SELECT * FROM Produto WHERE produtoId = :id LIMIT 1")
+    @Query("SELECT * FROM produto WHERE produtoId = :id LIMIT 1")
     suspend fun getById(id: Long): Produto?
 }

@@ -83,6 +83,7 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager:0.33.2-alpha")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.33.2-alpha")
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
+    implementation ("androidx.compose.runtime:runtime-livedata:1.3.3")
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries
 

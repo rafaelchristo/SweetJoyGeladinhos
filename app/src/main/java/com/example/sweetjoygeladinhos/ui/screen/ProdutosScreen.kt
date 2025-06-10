@@ -44,6 +44,7 @@ fun ProdutosScreenContent(navController: NavController) {
     val context = LocalContext.current
     val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
+
     val coroutineScope = rememberCoroutineScope()
 
     var showDialog by remember { mutableStateOf(false) }
