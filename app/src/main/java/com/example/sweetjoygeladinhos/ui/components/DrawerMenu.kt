@@ -21,6 +21,7 @@ fun MainScreenWithDrawer(navController: NavController, content: @Composable () -
     val menuItems = listOf(
         "Gráficos" to "graficos",
         "Relatórios" to "relatorios",
+        //"Debug" to "debug",
         "Sobre" to "sobre"
     )
 
@@ -42,6 +43,7 @@ fun MainScreenWithDrawer(navController: NavController, content: @Composable () -
                             when (route) {
                                 "graficos" -> Icon(Icons.Default.ShowChart, contentDescription = null)
                                 "relatorios" -> Icon(Icons.Default.Assessment, contentDescription = null)
+                                //"debug" -> Icon(Icons.Default.Assessment, contentDescription = null)
                                 "sobre" -> Icon(Icons.Default.Info, contentDescription = null)
                             }
                         }

@@ -33,6 +33,7 @@ fun MainScreenWithDrawer(navController: NavHostController, userViewModel: UserVi
     val menuItems = listOf(
         "Gráficos" to "graficos",
         "Relatórios" to "relatorios",
+        //"Debug" to "debug",
         "Sobre" to "sobre"
     )
 
@@ -66,6 +67,10 @@ fun MainScreenWithDrawer(navController: NavHostController, userViewModel: UserVi
                                     Icons.Default.Assessment,
                                     contentDescription = null
                                 )
+//                                "debug" -> Icon(
+//                                    Icons.Default.Assessment,
+//                                    contentDescription = null
+//                                )
 
                                 "sobre" -> Icon(Icons.Default.Info, contentDescription = null)
                             }

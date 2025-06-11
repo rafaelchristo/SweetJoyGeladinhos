@@ -26,13 +26,19 @@ fun MainScreen(
     ) {
         composable("splash") { SplashScreen(navController) }
         composable("login") { LoginScreen(navController, userViewModel) }
-        composable("home") { HomeContent(navController, userViewModel) }
+        composable("home") {
+            MainScreenWithDrawer(navController, userViewModel)
+        }
         composable("produtos") { ProdutosScreen(navController) }
         composable("estoque") { EstoqueScreen(navController) }
         composable("vendas") { VendasScreen(navController) }
         composable("pagamentos") { PagamentosScreen(navController) }
         composable("receitas") { ReceitaScreen(navController) }
         composable("promocao") { PromocaoScreen(navController) }
+        composable("graficos") { GraficoVendasScreen(navController) }
+        composable("relatorios") { RelatorioScreen()}
+        composable("Debug") { DebugScreen() }
+        composable("sobre") { SobreScreen() }
 
         composable("pedidos") {
             val produtoDao = SweetJoyApp.database.produtoDao()  // usa o banco vindo como parâmetro

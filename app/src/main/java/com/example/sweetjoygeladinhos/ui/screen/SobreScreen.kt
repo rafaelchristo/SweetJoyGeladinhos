@@ -6,5 +6,5 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun SobreScreen() {
-    Text("Tela Sobre")
+    Text("Aplicativo desenvolvido por Rafael Christofoletti com auxilio da IA")
 }

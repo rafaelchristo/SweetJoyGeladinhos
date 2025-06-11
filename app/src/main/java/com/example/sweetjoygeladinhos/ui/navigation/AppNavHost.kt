@@ -50,6 +50,7 @@ fun AppNavHost(
         // Telas Comuns
         composable("graficos") { GraficoVendasScreen(navController) }
         composable("relatorios") { RelatorioScreen() }
+        //composable("debug") { DebugScreen() }
         composable("sobre") { SobreScreen() }
 
         // Tela de Pedidos com factory passando os DAOs necessários

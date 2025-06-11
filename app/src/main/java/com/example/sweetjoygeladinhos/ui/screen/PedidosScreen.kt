@@ -1,14 +1,13 @@
 package com.example.sweetjoygeladinhos.ui.screen
 
 import SweetJoyGeladinhosTheme
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
@@ -55,25 +54,27 @@ fun PedidosScreenContent(viewModel: PedidosViewModel) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(4.dp)
             ) {
                 items(produtos) { produto ->
                     val quantidade = produtosSelecionados[produto] ?: 0
 
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(8.dp)
                         ) {
                             produto.imagemUri?.let { uriString ->
                                 val imagePainter = rememberAsyncImagePainter(model = Uri.parse(uriString))
@@ -82,26 +83,26 @@ fun PedidosScreenContent(viewModel: PedidosViewModel) {
                                     contentDescription = "Imagem do Produto",
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(160.dp),
+                                        .height(120.dp),
                                     contentScale = ContentScale.Crop
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                             }
 
                             Text(
                                 text = produto.nome,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = "R$ %.2f".format(produto.preco),
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 IconButton(onClick = {
                                     if (quantidade > 0) {
@@ -113,8 +114,8 @@ fun PedidosScreenContent(viewModel: PedidosViewModel) {
 
                                 Text(
                                     text = "$quantidade",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 

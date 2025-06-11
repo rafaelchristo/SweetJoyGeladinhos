@@ -15,7 +15,7 @@ class SweetJoyApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val MIGRATION_8_9 = object : Migration(8, 9) {
+        val MIGRATION_X_9 = object : Migration(8, 9) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // Adiciona a nova coluna 'quantidade' com valor padrão 0
                 database.execSQL("ALTER TABLE receitas ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 0")
@@ -27,7 +27,7 @@ class SweetJoyApp : Application() {
             AppDatabase::class.java,
             "sweetjoy.db"
         ).fallbackToDestructiveMigration() // <--- adiciona isso
-            .addMigrations(MIGRATION_8_9)
+            .addMigrations(MIGRATION_X_9)
             .build()
         FirebaseApp.initializeApp(this)
 
