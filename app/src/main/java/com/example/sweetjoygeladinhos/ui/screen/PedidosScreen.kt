@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -33,8 +34,10 @@ fun PedidosScreen(viewModel: PedidosViewModel) {
 @Composable
 fun PedidosScreenContent(viewModel: PedidosViewModel) {
     val context = LocalContext.current
-    val produtos by viewModel.produtos
-    val produtosSelecionados by viewModel.produtosSelecionados
+
+    // Corrigido: coletar o StateFlow com collectAsState() e dar um valor inicial
+    val produtos by viewModel.produtos.collectAsState(initial = emptyList())
+    val produtosSelecionados by viewModel.produtosSelecionados.collectAsState(initial = emptyMap())
 
     Scaffold(
         topBar = {

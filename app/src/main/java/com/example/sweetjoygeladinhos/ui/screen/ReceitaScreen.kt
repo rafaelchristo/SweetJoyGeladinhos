@@ -3,29 +3,27 @@ package com.example.sweetjoygeladinhos.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.example.sweetjoygeladinhos.SweetJoyApp
-import com.example.sweetjoygeladinhos.data.Receita
+import coil.compose.rememberAsyncImagePainter
+import com.example.sweetjoygeladinhos.model.Receita
+import com.example.sweetjoygeladinhos.viewmodel.ReceitaViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReceitaScreen(navController: NavController) {
-    // Esquema de cores
+fun ReceitaScreen(viewModel: ReceitaViewModel) {
     val softPink = Color(0xFFFFC1CC)
     val softRose = Color(0xFFFFD6E0)
     val darkRose = Color(0xFF8B1E3F)
 
-    val receitaDao = remember { SweetJoyApp.database.receitaDao() }
-    val receitas by receitaDao.listarTodas().collectAsState(initial = emptyList())
+    val receitas by viewModel.receitas.collectAsState()
+    val loading by viewModel.loading.collectAsState()
 
     var nome by remember { mutableStateOf("") }
     var ingredientes by remember { mutableStateOf("") }
@@ -54,6 +52,10 @@ fun ReceitaScreen(navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (loading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
             Text(
                 if (receitaEditando == null) "Nova Receita" else "Editar Receita",
                 style = MaterialTheme.typography.headlineSmall,
@@ -94,36 +96,30 @@ fun ReceitaScreen(navController: NavController) {
             Button(
                 onClick = {
                     val quantidade = quantidadeText.toIntOrNull() ?: 0
+                    if (nome.isBlank()) return@Button
+                    val receita = receitaEditando?.copy(
+                        nome = nome,
+                        ingredientes = ingredientes,
+                        modoPreparo = modoPreparo,
+                        quantidade = quantidade
+                    ) ?: Receita(
+                        nome = nome,
+                        ingredientes = ingredientes,
+                        modoPreparo = modoPreparo,
+                        quantidade = quantidade
+                    )
+
                     scope.launch {
-                        if (receitaEditando == null) {
-                            receitaDao.inserir(
-                                Receita(
-                                    nome = nome,
-                                    ingredientes = ingredientes,
-                                    modoPreparo = modoPreparo,
-                                    quantidade = quantidade
-                                )
-                            )
-                        } else {
-                            receitaDao.atualizar(
-                                receitaEditando!!.copy(
-                                    nome = nome,
-                                    ingredientes = ingredientes,
-                                    modoPreparo = modoPreparo,
-                                    quantidade = quantidade
-                                )
-                            )
+                        viewModel.salvarReceita(receita) {
+                            nome = ""
+                            ingredientes = ""
+                            modoPreparo = ""
+                            quantidadeText = ""
                             receitaEditando = null
                         }
-                        nome = ""
-                        ingredientes = ""
-                        modoPreparo = ""
-                        quantidadeText = ""
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = softPink,
                     contentColor = Color.White
@@ -142,10 +138,7 @@ fun ReceitaScreen(navController: NavController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = softRose
-                        )
+                        colors = CardDefaults.cardColors(containerColor = softRose)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(receita.nome, style = MaterialTheme.typography.titleMedium, color = darkRose)
@@ -167,7 +160,16 @@ fun ReceitaScreen(navController: NavController) {
                                     Text("Editar", color = darkRose)
                                 }
                                 TextButton(onClick = {
-                                    scope.launch { receitaDao.deletar(receita) }
+                                    scope.launch {
+                                        viewModel.deletarReceita(receita.id)
+                                        if (receitaEditando?.id == receita.id) {
+                                            receitaEditando = null
+                                            nome = ""
+                                            ingredientes = ""
+                                            modoPreparo = ""
+                                            quantidadeText = ""
+                                        }
+                                    }
                                 }) {
                                     Text("Excluir", color = darkRose)
                                 }

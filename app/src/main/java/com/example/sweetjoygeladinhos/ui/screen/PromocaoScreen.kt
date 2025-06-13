@@ -1,7 +1,7 @@
 package com.example.sweetjoygeladinhos.ui.screen
 
+
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -25,25 +26,26 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Promocao
-import kotlinx.coroutines.launch
+import com.example.sweetjoygeladinhos.viewmodel.PromocaoViewModel
+import com.example.sweetjoygeladinhos.viewmodel.PromocaoViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromocaoScreen(navController: NavController) {
-    // Esquema de cores
+
+fun PromocaoScreen(viewModel: PromocaoViewModel) {
+    // Remova esta linha daqui:
+    // val factory = remember { PromocaoViewModelFactory() }
+    // val viewModel: PromocaoViewModel = viewModel(factory = factory)
+
     val softPink = Color(0xFFFFC1CC)
     val softRose = Color(0xFFFFD6E0)
     val darkRose = Color(0xFF8B1E3F)
-
     val context = LocalContext.current
-    val promocaoDao = remember { SweetJoyApp.database.promocaoDao() }
-    val coroutineScope = rememberCoroutineScope()
 
-    var promocoes by remember { mutableStateOf(emptyList<Promocao>()) }
+    val promocoes by viewModel.promocoes.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var titulo by remember { mutableStateOf("") }
@@ -55,33 +57,6 @@ fun PromocaoScreen(navController: NavController) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> imagemUri = uri?.toString() }
-
-    fun carregarPromocoes() {
-        coroutineScope.launch {
-            promocoes = promocaoDao.getAll()
-        }
-    }
-
-    fun salvarPromocao() {
-        val promocao = Promocao(
-            id = promocaoEmEdicao?.id ?: 0,
-            titulo = titulo,
-            descricao = descricao,
-            validade = validade,
-            imagemUri = imagemUri
-        )
-        coroutineScope.launch {
-            if (promocaoEmEdicao == null) {
-                promocaoDao.insert(promocao)
-            } else {
-                promocaoDao.update(promocao)
-            }
-            carregarPromocoes()
-            showDialog = false
-            titulo = ""; descricao = ""; validade = ""; imagemUri = null
-            promocaoEmEdicao = null
-        }
-    }
 
     fun gerarMensagem(promocao: Promocao): String {
         return """
@@ -108,7 +83,43 @@ fun PromocaoScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) { carregarPromocoes() }
+    fun abrirDialogoEdicao(promocao: Promocao?) {
+        promocaoEmEdicao = promocao
+        titulo = promocao?.titulo.orEmpty()
+        descricao = promocao?.descricao.orEmpty()
+        validade = promocao?.validade.orEmpty()
+        imagemUri = promocao?.imagemUri
+        showDialog = true
+    }
+
+    fun salvarPromocao() {
+        if (titulo.isBlank()) {
+            Toast.makeText(context, "O título não pode ficar vazio.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val promocao = Promocao(
+            id = promocaoEmEdicao?.id ?: "",
+            titulo = titulo,
+            descricao = descricao,
+            validade = validade,
+            imagemUri = imagemUri
+        )
+        viewModel.salvarPromocao(promocao) {
+            showDialog = false
+            titulo = ""
+            descricao = ""
+            validade = ""
+            imagemUri = null
+            promocaoEmEdicao = null
+            Toast.makeText(context, "Promoção salva!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun excluirPromocao(id: String) {
+        viewModel.excluirPromocao(id) {
+            Toast.makeText(context, "Promoção excluída!", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -121,11 +132,7 @@ fun PromocaoScreen(navController: NavController) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    promocaoEmEdicao = null
-                    titulo = ""; descricao = ""; validade = ""; imagemUri = null
-                    showDialog = true
-                },
+                onClick = { abrirDialogoEdicao(null) },
                 containerColor = softPink,
                 contentColor = Color.White
             ) {
@@ -175,20 +182,18 @@ fun PromocaoScreen(navController: NavController) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            IconButton(onClick = {
-                                promocaoEmEdicao = promocao
-                                titulo = promocao.titulo
-                                descricao = promocao.descricao
-                                validade = promocao.validade
-                                imagemUri = promocao.imagemUri
-                                showDialog = true
-                            }) {
+                            IconButton(onClick = { abrirDialogoEdicao(promocao) }) {
                                 Icon(Icons.Default.Edit, contentDescription = "Editar", tint = darkRose)
                             }
                             IconButton(onClick = {
                                 enviarWhatsApp(gerarMensagem(promocao))
                             }) {
                                 Icon(Icons.Default.Share, contentDescription = "Compartilhar", tint = darkRose)
+                            }
+                            IconButton(onClick = {
+                                excluirPromocao(promocao.id)
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = Color.Red)
                             }
                         }
                     }

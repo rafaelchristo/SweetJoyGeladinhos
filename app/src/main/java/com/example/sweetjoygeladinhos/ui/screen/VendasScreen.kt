@@ -13,295 +13,165 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Venda
+import com.example.sweetjoygeladinhos.viewmodel.VendaViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VendasScreen(navController: NavController) {
+fun VendasScreen(
+    vendaViewModel: VendaViewModel = viewModel(),
+    estoqueList: List<EstoqueItemComProduto> // você deve passar ou obter via outro ViewModel
+) {
+    val vendas by vendaViewModel.vendas.collectAsState()
 
-    val softPink = Color(0xFFFFC1CC)
-    val softRose = Color(0xFFFFD6E0)
-    val darkRose = Color(0xFF8B1E3F)
-    val softRed = Color(0xFFFFB3B3)
-
-    val estoqueDao = remember { SweetJoyApp.database.estoqueDao() }
-    val vendaDao = remember { SweetJoyApp.database.vendaDao() }
-    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
     val coroutineScope = rememberCoroutineScope()
-
-    val estoqueList by estoqueDao.getAll().collectAsState(initial = emptyList())
-    var vendasRegistradas by remember { mutableStateOf<List<Pair<Venda, String>>>(emptyList()) }
-
-    var produtoSelecionado by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
-    var quantidadeVenda by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-
-    var editandoVenda by remember { mutableStateOf<Venda?>(null) }
-
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var vendaParaExcluir by remember { mutableStateOf<Venda?>(null) }
-
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun carregarVendas() {
-        coroutineScope.launch {
-            val vendas = vendaDao.getAll()
-            val vendasComNomes = vendas.mapNotNull { venda ->
-                val produto = produtoDao.getById(venda.produtoId)
-                produto?.let { venda to it.nome }
-            }
-            vendasRegistradas = vendasComNomes
+    // Estado da venda atual (produtos selecionados e suas quantidades)
+    var itensVenda by remember { mutableStateOf(mutableMapOf<String, Int>()) } // produtoId -> quantidade
+
+    fun adicionarOuAtualizarProduto(produtoId: String, quantidade: Int) {
+        if (quantidade <= 0) {
+            itensVenda.remove(produtoId)
+        } else {
+            itensVenda[produtoId] = quantidade
         }
     }
 
-    LaunchedEffect(Unit) {
-        carregarVendas()
+    fun calcularTotal(): Double {
+        var total = 0.0
+        for ((produtoId, qtd) in itensVenda) {
+            val produto = estoqueList.find { it.item.produtoId == produtoId }?.produto
+            val preco = produto?.preco ?: 0.0
+            total += preco * qtd
+        }
+        return total
     }
 
-    fun mostrarSnackbar(mensagem: String) {
-        coroutineScope.launch {
-            snackbarHostState.showSnackbar(mensagem)
-        }
-    }
-
-    fun registrarOuAtualizarVenda() {
-        val quantidadeInt = quantidadeVenda.toIntOrNull()
-        val estoqueItem = produtoSelecionado?.item
-
-        if (estoqueItem == null) {
-            mostrarSnackbar("Selecione um produto.")
-            return
-        }
-
-        if (quantidadeInt == null || quantidadeInt <= 0) {
-            mostrarSnackbar("Informe uma quantidade válida.")
-            return
-        }
-
-        if (quantidadeInt > estoqueItem.quantidade && editandoVenda == null) {
-            mostrarSnackbar("Quantidade maior que o estoque disponível.")
-            return
-        }
-
-        coroutineScope.launch {
-            if (editandoVenda != null) {
-                val vendaAtualizada = editandoVenda!!.copy(
-                    produtoId = estoqueItem.produtoId,
-                    quantidade = quantidadeInt
-                )
-                vendaDao.update(vendaAtualizada)
-                mostrarSnackbar("Venda atualizada com sucesso!")
-                editandoVenda = null
-            } else {
-                estoqueDao.updateEstoqueItem(estoqueItem.copy(quantidade = estoqueItem.quantidade - quantidadeInt))
-
-                val data = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                val novaVenda = Venda(
-                    produtoId = estoqueItem.produtoId,
-                    quantidade = quantidadeInt,
-                    dataVenda = data
-                )
-                vendaDao.insert(novaVenda)
-                mostrarSnackbar("Venda registrada com sucesso!")
-            }
-
-            carregarVendas()
-            produtoSelecionado = null
-            quantidadeVenda = ""
-        }
-    }
-
-    fun confirmarExclusao(venda: Venda) {
-        vendaParaExcluir = venda
-        showDeleteDialog = true
-    }
-
-    fun excluirVenda() {
-        vendaParaExcluir?.let { venda ->
+    fun registrarVenda() {
+        if (itensVenda.isEmpty()) {
             coroutineScope.launch {
-                vendaDao.delete(venda)
-                mostrarSnackbar("Venda excluída com sucesso.")
-                carregarVendas()
+                snackbarHostState.showSnackbar("Selecione ao menos um produto com quantidade")
             }
+            return
         }
-        showDeleteDialog = false
+
+        val venda = Venda(
+            produtos = itensVenda.toMap(),
+            total = calcularTotal(),
+            dataVenda = System.currentTimeMillis()
+        )
+        vendaViewModel.registrarVenda(venda)
+
+        itensVenda = mutableMapOf()
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Vendas", fontSize = 22.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = softPink,
-                    titleContentColor = Color.White
-                )
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    text = if (editandoVenda != null) "Editar Venda" else "Registrar Venda",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = darkRose
-                )
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            Text("Registrar Venda", style = MaterialTheme.typography.titleLarge)
 
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = produtoSelecionado?.produto?.nome ?: "",
-                        onValueChange = {},
-                        label = { Text("Produto") },
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
+            Spacer(Modifier.height(12.dp))
 
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        estoqueList.forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item.produto.sabor) },
-                                onClick = {
-                                    produtoSelecionado = item
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+            // Lista de produtos para escolher quantidade
+            LazyColumn {
+                items(estoqueList) { item ->
+                    val produtoId = item.item.produtoId
+                    val quantidadeSelecionada = itensVenda[produtoId] ?: 0
 
-                OutlinedTextField(
-                    value = quantidadeVenda,
-                    onValueChange = { quantidadeVenda = it },
-                    label = { Text("Quantidade de Venda") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Button(
-                    onClick = { registrarOuAtualizarVenda() },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = softPink,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(if (editandoVenda != null) "Atualizar Venda" else "Registrar Venda")
-                }
-
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                Text("Estoque Atual", style = MaterialTheme.typography.titleMedium, color = darkRose)
-            }
-
-            items(estoqueList) { item ->
-                val isLowStock = item.item.quantidade <= 10
-                val textColor = if (isLowStock) softRed else Color.Unspecified
-
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = softRose
-                    )
-                ) {
                     Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(vertical = 4.dp)
                     ) {
-                        Column {
-                            Text(text = item.produto.sabor, color = darkRose)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (isLowStock) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = "Baixo estoque",
-                                        tint = softRed,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
-                                Text(
-                                    text = "Qtd: ${item.item.quantidade}",
-                                    color = textColor
-                                )
+                        Text(
+                            text = item.produto.nome,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                val novaQtd = (quantidadeSelecionada - 1).coerceAtLeast(0)
+                                adicionarOuAtualizarProduto(produtoId, novaQtd)
                             }
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Diminuir")
+                        }
+                        Text(text = quantidadeSelecionada.toString(), modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                        IconButton(
+                            onClick = {
+                                val novaQtd = quantidadeSelecionada + 1
+                                // opcional: verificar estoque disponível antes de aumentar
+                                adicionarOuAtualizarProduto(produtoId, novaQtd)
+                            }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Aumentar")
                         }
                     }
                 }
             }
 
-            item {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Vendas Registradas", style = MaterialTheme.typography.titleMedium, color = darkRose)
+            Spacer(Modifier.height(16.dp))
+
+            Text("Total: R$ %.2f".format(calcularTotal()), style = MaterialTheme.typography.titleMedium)
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = { registrarVenda() },
+                enabled = itensVenda.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Registrar Venda")
             }
 
-            items(vendasRegistradas) { (venda, nomeProduto) ->
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = softRose
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Produto: $nomeProduto", color = darkRose)
-                        Text("Quantidade: ${venda.quantidade}")
-                        Text("Data da Venda: ${venda.dataVenda}")
+            Spacer(Modifier.height(24.dp))
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    produtoSelecionado = estoqueList.find { it.item.produtoId == venda.produtoId }
-                                    quantidadeVenda = venda.quantidade.toString()
-                                    editandoVenda = venda
-                                },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = darkRose
-                                )
-                            ) {
-                                Icon(Icons.Default.Edit, contentDescription = "Editar")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Editar")
+            Text("Vendas Registradas", style = MaterialTheme.typography.titleLarge)
+
+            Spacer(Modifier.height(8.dp))
+
+            LazyColumn {
+                items(vendas) { venda ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("Data: ${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(venda.dataVenda))}")
+                            Text("Total: R$ %.2f".format(venda.total))
+
+                            Spacer(Modifier.height(4.dp))
+
+                            venda.produtos.forEach { (produtoId, qtd) ->
+                                val produto = estoqueList.find { it.item.produtoId == produtoId }?.produto
+                                val nome = produto?.nome ?: "Produto desconhecido"
+                                Text("$nome: $qtd")
                             }
 
-                            OutlinedButton(
-                                onClick = { confirmarExclusao(venda) },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Excluir")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Excluir")
+                            Spacer(Modifier.height(8.dp))
+
+                            Row {
+                                OutlinedButton(onClick = {
+                                    // Implementar edição se quiser
+                                }) {
+                                    Text("Editar")
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                OutlinedButton(onClick = {
+                                    vendaViewModel.deletarVenda(venda.id)
+                                }) {
+                                    Text("Excluir")
+                                }
                             }
                         }
                     }
@@ -309,22 +179,5 @@ fun VendasScreen(navController: NavController) {
             }
         }
     }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            confirmButton = {
-                TextButton(onClick = { excluirVenda() }) {
-                    Text("Confirmar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            },
-            title = { Text("Confirmar Exclusão") },
-            text = { Text("Tem certeza que deseja excluir esta venda?") }
-        )
-    }
 }
+

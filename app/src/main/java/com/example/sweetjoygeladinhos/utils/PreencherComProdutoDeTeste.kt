@@ -1,20 +1,37 @@
 package com.example.sweetjoygeladinhos.utils
 
 import android.content.Context
-import com.example.sweetjoygeladinhos.data.AppDatabase
 import com.example.sweetjoygeladinhos.model.Produto
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 fun preencherComProdutosDeTeste(context: Context) {
-    val db = AppDatabase.getInstance(context)
+    val db = FirebaseFirestore.getInstance()
+    val produtosRef = db.collection("produtos")
+
+    val produtosTeste = listOf(
+        Produto(nome = "Geladinho de Morango", sabor = "Morango", preco = 2.50, imagemUri = null),
+        Produto(nome = "Geladinho de Chocolate", sabor = "Chocolate", preco = 3.00, imagemUri = null),
+        Produto(nome = "Geladinho de Coco", sabor = "Coco", preco = 2.75, imagemUri = null),
+        Produto(nome = "Geladinho de Maracujá", sabor = "Maracujá", preco = 2.50, imagemUri = null),
+    )
+
     CoroutineScope(Dispatchers.IO).launch {
-        if (db.produtoDao().getAllNow().isEmpty()) {
-            db.produtoDao().insert(Produto(nome = "Morango", sabor ="Branco", preco = 2.50))
-            db.produtoDao().insert(Produto(nome = "Chocolate",sabor ="Preto", preco = 3.00))
-            db.produtoDao().insert(Produto(nome = "Uva",sabor ="Roxo", preco = 2.30))
-            db.produtoDao().insert(Produto(nome = "Limão",sabor ="Verde", preco = 2.00))
+        try {
+            // Evita duplicar dados se já houver produtos
+            val existentes = produtosRef.get().await()
+            if (existentes.isEmpty) {
+                for (produto in produtosTeste) {
+                    val doc = produtosRef.document()
+                    val produtoComId = produto.copy(id = doc.id)
+                    doc.set(produtoComId).await()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

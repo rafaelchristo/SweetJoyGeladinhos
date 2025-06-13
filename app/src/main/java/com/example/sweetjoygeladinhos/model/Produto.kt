@@ -1,15 +1,10 @@
 package com.example.sweetjoygeladinhos.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "produto")
 data class Produto(
-    @PrimaryKey(autoGenerate = true) val produtoId: Long = 0L,
-    val nome: String,
-    val sabor: String,
-    val preco: Double,
-    val categoria: String = "Gourmet", // valor padrão
+    val id: String = "", // ID do documento no Firestore
+    val nome: String = "",
+    val sabor: String = "",
+    val preco: Double = 0.0,
+    val categoria: String = "Gourmet",
     val imagemUri: String? = null
 )
-

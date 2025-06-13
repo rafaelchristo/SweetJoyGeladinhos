@@ -28,24 +28,28 @@ import coil.request.ImageRequest
 import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.utils.saveImageToInternalStorage
+import com.example.sweetjoygeladinhos.viewmodel.ProdutoViewModel
 import kotlinx.coroutines.launch
 import java.io.File
-
 @Composable
-fun ProdutosScreen(navController: NavController) {
+fun ProdutosScreen(
+    navController: NavController,
+    viewModel: ProdutoViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
     SweetJoyGeladinhosTheme {
-        ProdutosScreenContent(navController)
+        ProdutosScreenContent(navController, viewModel)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProdutosScreenContent(navController: NavController) {
-    val context = LocalContext.current
-    val produtoDao = remember { SweetJoyApp.database.produtoDao() }
-    val produtos by produtoDao.getAll().collectAsState(initial = emptyList())
-
+fun ProdutosScreenContent(
+    navController: NavController,
+    viewModel: ProdutoViewModel
+) {
+    val produtos by viewModel.produtos.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var showDialog by remember { mutableStateOf(false) }
     var nome by remember { mutableStateOf("") }
@@ -79,12 +83,14 @@ fun ProdutosScreenContent(navController: NavController) {
     fun salvarProduto() {
         val precoDouble = preco.toDoubleOrNull()
         if (precoDouble == null) {
-            coroutineScope.launch { snackbarHostState.showSnackbar("Preço inválido") }
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Preço inválido")
+            }
             return
         }
 
         val produto = Produto(
-            produtoId = produtoEmEdicao?.produtoId ?: 0L,
+            id = produtoEmEdicao?.id ?: "", // Ajuste para Firestore ID
             nome = nome,
             sabor = sabor,
             preco = precoDouble,
@@ -92,22 +98,31 @@ fun ProdutosScreenContent(navController: NavController) {
         )
 
         coroutineScope.launch {
-            if (produtoEmEdicao == null) {
-                produtoDao.insert(produto)
+            val sucesso = if (produtoEmEdicao == null) {
+                viewModel.adicionarProduto(produto)
             } else {
-                produtoDao.update(produto)
+                viewModel.atualizarProduto(produto)
             }
-            showDialog = false
-            limparCampos()
+
+            if (sucesso) {
+                showDialog = false
+                limparCampos()
+            } else {
+                snackbarHostState.showSnackbar("Erro ao salvar produto")
+            }
         }
     }
 
     fun deletarProduto() {
-        produtoParaExcluir?.let {
+        produtoParaExcluir?.let { produto ->
             coroutineScope.launch {
-                produtoDao.delete(it)
-                showDeleteConfirm = false
-                produtoParaExcluir = null
+                val sucesso = viewModel.deletarProduto(produto.id)
+                if (sucesso) {
+                    showDeleteConfirm = false
+                    produtoParaExcluir = null
+                } else {
+                    snackbarHostState.showSnackbar("Erro ao deletar produto")
+                }
             }
         }
     }

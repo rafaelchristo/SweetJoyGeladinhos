@@ -57,9 +57,6 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation("androidx.compose.material:material-icons-extended:1.0.0")
     // ROOM (corrigido)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -84,8 +81,16 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager-indicators:0.33.2-alpha")
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
     implementation ("androidx.compose.runtime:runtime-livedata:1.3.3")
+    implementation ("com.google.firebase:firebase-bom:32.7.0")
+    implementation ("com.google.firebase:firebase-firestore-ktx")
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries
-
     apply(plugin = "com.google.gms.google-services")
+    // Use Compose BOM versão mais recente (exemplo)
+    implementation (platform("androidx.compose:compose-bom:2024.06.01"))
+// Material3 atualizado
+    implementation ("androidx.compose.material3:material3:1.1.0")
+// Outras dependências Compose
+    implementation ("androidx.activity:activity-compose:1.8.0")
+
 }

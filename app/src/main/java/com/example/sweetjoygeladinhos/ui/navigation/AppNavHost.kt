@@ -2,23 +2,19 @@ package com.example.sweetjoygeladinhos.ui.navigation
 
 import ProdutosScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.sweetjoygeladinhos.SweetJoyApp
-import com.example.sweetjoygeladinhos.data.AppDatabase
 import com.example.sweetjoygeladinhos.ui.screen.*
 import com.example.sweetjoygeladinhos.ui.screens.*
-import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
-import com.example.sweetjoygeladinhos.ui.screen.PedidosScreen
-import com.example.sweetjoygeladinhos.viewmodel.PedidosViewModel
-import com.example.sweetjoygeladinhos.viewmodel.PedidosViewModelFactory
+import com.example.sweetjoygeladinhos.viewmodel.*
+import androidx.compose.runtime.getValue
 
 @Composable
 fun AppNavHost(
-    navController: NavHostController,
-    database: AppDatabase
+    navController: NavHostController
 ) {
     val userViewModel: UserViewModel = viewModel()
 
@@ -41,27 +37,43 @@ fun AppNavHost(
 
         // Telas Admin
         composable("produtos") { ProdutosScreen(navController) }
-        composable("estoque") { EstoqueScreen(navController) }
-        composable("vendas") { VendasScreen(navController) }
+
+        composable("estoque") {
+            val estoqueViewModel: EstoqueViewModel = viewModel()
+            EstoqueScreen(viewModel = estoqueViewModel)
+        }
+
+        composable("vendas") {
+            val vendaViewModel: VendaViewModel = viewModel()
+            val estoqueViewModel: EstoqueViewModel = viewModel()
+            val estoqueList by estoqueViewModel.estoque.collectAsState()
+
+            VendasScreen(
+                vendaViewModel = vendaViewModel,
+                estoqueList = estoqueList
+            )
+        }
+
         composable("pagamentos") { PagamentosScreen(navController) }
-        composable("promocao") { PromocaoScreen(navController) }
-        composable("receitas") { ReceitaScreen(navController) }
+
+        composable("promocao") {
+            val promocaoViewModel: PromocaoViewModel = viewModel()
+            PromocaoScreen(viewModel = promocaoViewModel)
+        }
+
+        composable("receita") {
+            val receitaViewModel: ReceitaViewModel = viewModel()
+            ReceitaScreen(viewModel = receitaViewModel)
+        }
 
         // Telas Comuns
         composable("graficos") { GraficoVendasScreen(navController) }
         composable("relatorios") { RelatorioScreen() }
-        //composable("debug") { DebugScreen() }
         composable("sobre") { SobreScreen() }
 
-        // Tela de Pedidos com factory passando os DAOs necessários
+        // Tela de Pedidos — ViewModel sem factory (Firestore)
         composable("pedidos") {
-            val factory = PedidosViewModelFactory(
-                produtoDao = SweetJoyApp.database.produtoDao(),
-                pedidoDao = SweetJoyApp.database.pedidoDao(),
-                estoqueDao = SweetJoyApp.database.estoqueDao(),
-                vendaDao = SweetJoyApp.database.vendaDao()
-            )
-            val pedidosViewModel: PedidosViewModel = viewModel(factory = factory)
+            val pedidosViewModel: PedidosViewModel = viewModel()
             PedidosScreen(viewModel = pedidosViewModel)
         }
     }

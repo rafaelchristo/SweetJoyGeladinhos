@@ -1,43 +1,58 @@
 package com.example.sweetjoygeladinhos.viewmodel
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.sweetjoygeladinhos.data.EstoqueDao
-import com.example.sweetjoygeladinhos.data.PedidoDao
-import com.example.sweetjoygeladinhos.data.ProdutoDao
-import com.example.sweetjoygeladinhos.data.VendaDao
 import com.example.sweetjoygeladinhos.model.Pedido
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.model.Venda
-import kotlinx.coroutines.flow.collect
+import com.example.sweetjoygeladinhos.repository.EstoqueRepository
+import com.example.sweetjoygeladinhos.repository.PedidoRepository
+import com.example.sweetjoygeladinhos.repository.ProdutoRepository
+import com.example.sweetjoygeladinhos.repository.VendaRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
-class PedidosViewModel(
-    private val produtoDao: ProdutoDao,
-    private val pedidoDao: PedidoDao,
-    private val estoqueDao: EstoqueDao,
-    private val vendaDao: VendaDao
-) : ViewModel() {
+class PedidosViewModel : ViewModel() {
 
-    private val _produtos = mutableStateOf<List<Produto>>(emptyList())
-    val produtos: State<List<Produto>> get() = _produtos
+    private val pedidoRepository = PedidoRepository()
+    private val produtoRepository = ProdutoRepository()
+    private val estoqueRepository = EstoqueRepository()
+    private val vendaRepository = VendaRepository()
 
-    private val _produtosSelecionados = mutableStateOf<Map<Produto, Int>>(emptyMap())
-    val produtosSelecionados: State<Map<Produto, Int>> get() = _produtosSelecionados
+    private val _pedidos = MutableStateFlow<List<Pedido>>(emptyList())
+    val pedidos: StateFlow<List<Pedido>> = _pedidos
+
+    private val _produtos = MutableStateFlow<List<Produto>>(emptyList())
+    val produtos: StateFlow<List<Produto>> = _produtos
+
+    private val _vendas = MutableStateFlow<List<Venda>>(emptyList())
+    val vendas: StateFlow<List<Venda>> = _vendas
+
+    private val _produtosSelecionados = MutableStateFlow<Map<Produto, Int>>(emptyMap())
+    val produtosSelecionados: StateFlow<Map<Produto, Int>> = _produtosSelecionados
 
     init {
+        carregarPedidos()
         carregarProdutos()
+        carregarVendas()
     }
 
-    private fun carregarProdutos() {
+    fun carregarPedidos() {
         viewModelScope.launch {
-            produtoDao.getAll().collect { lista ->
-                _produtos.value = lista
-            }
+            _pedidos.value = pedidoRepository.obterPedidos()
+        }
+    }
+
+    fun carregarProdutos() {
+        viewModelScope.launch {
+            _produtos.value = produtoRepository.obterProdutos()
+        }
+    }
+
+    fun carregarVendas() {
+        viewModelScope.launch {
+            _vendas.value = vendaRepository.obterVendas()
         }
     }
 
@@ -49,51 +64,57 @@ class PedidosViewModel(
 
     fun removerProduto(produto: Produto) {
         val atual = _produtosSelecionados.value.toMutableMap()
-        val quantidadeAtual = atual[produto] ?: return
-        if (quantidadeAtual > 1) {
-            atual[produto] = quantidadeAtual - 1
+        val quantidade = (atual[produto] ?: 0) - 1
+        if (quantidade > 0) {
+            atual[produto] = quantidade
         } else {
             atual.remove(produto)
         }
         _produtosSelecionados.value = atual
     }
 
-    fun gerarResumoPedido(): String {
-        return _produtosSelecionados.value.entries.joinToString("\n") { (produto, quantidade) ->
-            "${produto.sabor} - Quantidade: $quantidade"
-        }
+    fun limparPedido() {
+        _produtosSelecionados.value = emptyMap()
     }
 
     fun salvarPedido() {
-        val resumo = gerarResumoPedido()
-        val total = _produtosSelecionados.value.entries.sumOf { it.key.preco * it.value.toDouble() }
+        viewModelScope.launch {
+            val produtosMap = _produtosSelecionados.value
+            if (produtosMap.isNotEmpty()) {
+                // calcula total do pedido
+                val total = produtosMap.entries.sumOf { it.key.preco * it.value }
 
-        if (_produtosSelecionados.value.isNotEmpty()) {
-            viewModelScope.launch {
-                pedidoDao.inserir(
-                    Pedido(
-                        detalhes = resumo,
-                        total = total
-                    )
+                // converte produtos para Map<String, Int> (id do produto e quantidade)
+                val produtosParaPedido = produtosMap.map { it.key.id to it.value }.toMap()
+
+                val pedido = Pedido(
+                    produtos = produtosParaPedido,
+                    total = total
                 )
+                pedidoRepository.adicionarPedido(pedido)
 
-                val dataVenda = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                val venda = Venda(
+                    produtos = produtosParaPedido,
+                    total = total
+                )
+                vendaRepository.registrarVenda(venda)
 
-                _produtosSelecionados.value.forEach { (produto, quantidade) ->
-                    vendaDao.insert(Venda(produtoId = produto.produtoId, quantidade = quantidade, dataVenda = dataVenda))
-
-                    estoqueDao.getByProdutoId(produto.produtoId)?.let {
-                        val novaQuantidade = (it.quantidade - quantidade).coerceAtLeast(0)
-                        estoqueDao.updateEstoqueItem(it.copy(quantidade = novaQuantidade))
-                    }
+                // atualiza estoque no Firestore com quantidade negativa para retirar
+                produtosMap.forEach { (produto, quantidade) ->
+                    estoqueRepository.atualizarQuantidade(produto.id, -quantidade)
                 }
 
                 limparPedido()
+                carregarPedidos()
+                carregarVendas()
             }
         }
     }
 
-    fun limparPedido() {
-        _produtosSelecionados.value = emptyMap()
+    fun deletarPedido(id: String) {
+        viewModelScope.launch {
+            pedidoRepository.deletarPedido(id)
+            carregarPedidos()
+        }
     }
 }
