@@ -1,25 +1,30 @@
 package com.example.sweetjoygeladinhos.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sweetjoygeladinhos.model.EstoqueItem
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Produto
-import com.google.firebase.firestore.FirebaseFirestore
+import com.example.sweetjoygeladinhos.repository.EstoqueRepository
+import com.example.sweetjoygeladinhos.repository.ProdutoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class EstoqueViewModel : ViewModel() {
 
-    private val db = FirebaseFirestore.getInstance()
+    private val produtoRepository = ProdutoRepository()
+    private val estoqueRepository = EstoqueRepository()
 
     private val _produtos = MutableStateFlow<List<Produto>>(emptyList())
     val produtos: StateFlow<List<Produto>> = _produtos
 
     private val _estoque = MutableStateFlow<List<EstoqueItemComProduto>>(emptyList())
     val estoque: StateFlow<List<EstoqueItemComProduto>> = _estoque
+
+    private val _carregandoProdutos = MutableStateFlow(true)
+    val carregandoProdutos: StateFlow<Boolean> = _carregandoProdutos
 
     init {
         carregarProdutos()
@@ -28,59 +33,51 @@ class EstoqueViewModel : ViewModel() {
 
     private fun carregarProdutos() = viewModelScope.launch {
         try {
-            val snapshot = db.collection("produtos").get().await()
-            _produtos.value = snapshot.toObjects(Produto::class.java)
+            _carregandoProdutos.value = true
+            _produtos.value = produtoRepository.obterProdutos()
         } catch (e: Exception) {
-            e.printStackTrace()
-            // Aqui você pode adicionar algum tratamento de erro visível para o usuário, se quiser
+            Log.e("EstoqueVM", "Erro ao carregar produtos", e)
+        } finally {
+            _carregandoProdutos.value = false
         }
     }
 
     private fun carregarEstoque() = viewModelScope.launch {
         try {
-            val estoqueSnapshot = db.collection("estoque").get().await()
-            val listaEstoque = estoqueSnapshot.documents.mapNotNull { doc ->
-                val item = doc.toObject(EstoqueItem::class.java)
-                if (item != null) {
-                    val produtoDoc = db.collection("produtos").document(item.produtoId).get().await()
-                    val produto = produtoDoc.toObject(Produto::class.java)
-                    if (produto != null) {
-                        EstoqueItemComProduto(item, produto)
-                    } else null
-                } else null
+            val estoqueAtual = estoqueRepository.obterTodosComProduto()
+
+            if (estoqueAtual.isEmpty()) {
+                val produtosExistentes = produtoRepository.obterProdutos()
+                produtosExistentes.forEach { produto ->
+                    val novoItem = EstoqueItem(
+                        produtoId = produto.id,
+                        quantidade = 0
+                    )
+                    estoqueRepository.adicionarOuAtualizarItem(novoItem)
+                }
             }
-            _estoque.value = listaEstoque
+
+            _estoque.value = estoqueRepository.obterTodosComProduto()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("EstoqueVM", "Erro ao carregar estoque", e)
         }
     }
 
     fun salvarEstoque(item: EstoqueItem) = viewModelScope.launch {
         try {
-            val estoqueRef = db.collection("estoque")
-            val query = estoqueRef.whereEqualTo("produtoId", item.produtoId).get().await()
-            if (query.isEmpty) {
-                estoqueRef.add(item).await()
-            } else {
-                val docId = query.documents.first().id
-                estoqueRef.document(docId).set(item).await()
-            }
+            estoqueRepository.adicionarOuAtualizarItem(item)
             carregarEstoque()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("EstoqueVM", "Erro ao salvar estoque", e)
         }
     }
 
     fun excluirEstoque(item: EstoqueItem) = viewModelScope.launch {
         try {
-            val estoqueRef = db.collection("estoque")
-            val query = estoqueRef.whereEqualTo("produtoId", item.produtoId).get().await()
-            if (!query.isEmpty) {
-                estoqueRef.document(query.documents.first().id).delete().await()
-                carregarEstoque()
-            }
+            estoqueRepository.deletarItem(item.produtoId)
+            carregarEstoque()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("EstoqueVM", "Erro ao excluir estoque", e)
         }
     }
 }

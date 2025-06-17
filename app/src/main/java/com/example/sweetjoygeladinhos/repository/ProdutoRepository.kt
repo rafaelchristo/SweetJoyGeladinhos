@@ -17,7 +17,9 @@ class ProdutoRepository {
 
     suspend fun obterProdutos(): List<Produto> {
         val snapshot = produtosRef.get().await()
-        return snapshot.toObjects(Produto::class.java)
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Produto::class.java)?.copy(id = doc.id)
+        }
     }
 
     suspend fun atualizarProduto(produto: Produto) {

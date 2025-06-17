@@ -21,6 +21,7 @@ fun EstoqueScreen(
 ) {
     val produtos by viewModel.produtos.collectAsState()
     val estoque by viewModel.estoque.collectAsState()
+    val carregandoProdutos by viewModel.carregandoProdutos.collectAsState()
 
     var produtoSelecionado by remember { mutableStateOf<Produto?>(null) }
     var quantidade by remember { mutableStateOf("") }
@@ -35,34 +36,61 @@ fun EstoqueScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Dropdown para selecionar produto
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
-            TextField(
-                readOnly = true,
-                value = produtoSelecionado?.nome ?: "",
-                onValueChange = {},
-                label = { Text("Produto") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                produtos.forEach { produto ->
-                    DropdownMenuItem(
-                        text = { Text(produto.nome) },
-                        onClick = {
-                            produtoSelecionado = produto
-                            expanded = false
-                        }
-                    )
+        // Dropdown ou loading
+        when {
+            carregandoProdutos -> {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator()
                 }
+            }
+
+            produtos.isNotEmpty() -> {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = {
+                        expanded = !expanded
+                    }
+                ) {
+                    TextField(
+                        readOnly = true,
+                        value = produtoSelecionado?.nome?.ifEmpty { "(Selecione um produto)" } ?: "(Selecione um produto)",
+                        onValueChange = {},
+                        label = { Text("Produto") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .menuAnchor() // necessário para alinhar corretamente
+                            .fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        produtos.forEach { produto ->
+                            DropdownMenuItem(
+                                text = { Text(produto.nome.ifEmpty { "(Sem nome)" }) },
+                                onClick = {
+                                    produtoSelecionado = produto
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            else -> {
+                Text(
+                    text = "Nenhum produto encontrado.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
         }
 
