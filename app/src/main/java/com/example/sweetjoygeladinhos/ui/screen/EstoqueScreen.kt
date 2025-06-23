@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sweetjoygeladinhos.model.EstoqueItem
@@ -63,7 +65,7 @@ fun EstoqueScreen(
                         label = { Text("Produto") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
-                            .menuAnchor() // necessário para alinhar corretamente
+                            .menuAnchor()
                             .fillMaxWidth()
                     )
 
@@ -96,7 +98,7 @@ fun EstoqueScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo quantidade
+        // Campo quantidade com teclado numérico
         TextField(
             value = quantidade,
             onValueChange = { novoValor ->
@@ -104,6 +106,9 @@ fun EstoqueScreen(
             },
             label = { Text("Quantidade") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardType = KeyboardType.Number
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))

@@ -14,47 +14,60 @@ class ProdutoViewModel : ViewModel() {
     private val _produtos = MutableStateFlow<List<Produto>>(emptyList())
     val produtos: StateFlow<List<Produto>> = _produtos
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     init {
         viewModelScope.launch {
             carregarProdutos()
         }
     }
 
-    // Carrega a lista de produtos do repositório
     suspend fun carregarProdutos() {
-        _produtos.value = repository.obterProdutos()
+        _isLoading.value = true
+        try {
+            _produtos.value = repository.obterProdutos()
+        } finally {
+            _isLoading.value = false
+        }
     }
 
-    // Adiciona produto e retorna sucesso/falha
     suspend fun adicionarProduto(produto: Produto): Boolean {
         return try {
+            _isLoading.value = true
             repository.adicionarProduto(produto)
             carregarProdutos()
             true
         } catch (e: Exception) {
             false
+        } finally {
+            _isLoading.value = false
         }
     }
 
-    // Deleta produto pelo id e retorna sucesso/falha
     suspend fun deletarProduto(id: String): Boolean {
         return try {
+            _isLoading.value = true
             repository.deletarProduto(id)
             carregarProdutos()
             true
         } catch (e: Exception) {
             false
+        } finally {
+            _isLoading.value = false
         }
     }
 
-    // Atualiza produto e retorna sucesso/falha
     suspend fun atualizarProduto(produto: Produto): Boolean {
         return try {
+            _isLoading.value = true
             repository.atualizarProduto(produto)
             carregarProdutos()
             true
         } catch (e: Exception) {
             false
+        } finally {
+            _isLoading.value = false
         }
     }
 }

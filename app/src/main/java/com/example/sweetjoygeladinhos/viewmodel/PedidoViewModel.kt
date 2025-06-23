@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.sweetjoygeladinhos.model.Pedido
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.model.Venda
+import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.repository.EstoqueRepository
 import com.example.sweetjoygeladinhos.repository.PedidoRepository
 import com.example.sweetjoygeladinhos.repository.ProdutoRepository
@@ -32,10 +33,17 @@ class PedidosViewModel : ViewModel() {
     private val _produtosSelecionados = MutableStateFlow<Map<Produto, Int>>(emptyMap())
     val produtosSelecionados: StateFlow<Map<Produto, Int>> = _produtosSelecionados
 
+    private val _estoque = MutableStateFlow<List<EstoqueItemComProduto>>(emptyList())
+    val estoque: StateFlow<List<EstoqueItemComProduto>> = _estoque
+
+    private val _carregandoEstoque = MutableStateFlow(false)
+    val carregandoEstoque: StateFlow<Boolean> = _carregandoEstoque
+
     init {
         carregarPedidos()
         carregarProdutos()
         carregarVendas()
+        carregarEstoque()
     }
 
     fun carregarPedidos() {
@@ -56,10 +64,24 @@ class PedidosViewModel : ViewModel() {
         }
     }
 
+    fun carregarEstoque() {
+        viewModelScope.launch {
+            _carregandoEstoque.value = true
+            _estoque.value = estoqueRepository.obterTodosComProduto()
+            _carregandoEstoque.value = false
+        }
+    }
+
     fun adicionarProduto(produto: Produto) {
         val atual = _produtosSelecionados.value.toMutableMap()
-        atual[produto] = (atual[produto] ?: 0) + 1
-        _produtosSelecionados.value = atual
+        val quantidadeAtual = atual[produto] ?: 0
+
+        val estoqueDisponivel = _estoque.value.find { it.produto.id == produto.id }?.item?.quantidade ?: 0
+
+        if (quantidadeAtual < estoqueDisponivel) {
+            atual[produto] = quantidadeAtual + 1
+            _produtosSelecionados.value = atual
+        }
     }
 
     fun removerProduto(produto: Produto) {
@@ -81,10 +103,23 @@ class PedidosViewModel : ViewModel() {
         viewModelScope.launch {
             val produtosMap = _produtosSelecionados.value
             if (produtosMap.isNotEmpty()) {
-                // calcula total do pedido
-                val total = produtosMap.entries.sumOf { it.key.preco * it.value }
 
-                // converte produtos para Map<String, Int> (id do produto e quantidade)
+                // Recarrega o estoque atual para garantir dados atualizados
+                val estoqueAtualizado = estoqueRepository.obterTodosComProduto()
+                    .associateBy { it.produto.id }
+
+                // Valida se existe estoque suficiente para todos os produtos
+                val semEstoqueSuficiente = produtosMap.any { (produto, qtdPedido) ->
+                    val qtdEstoque = estoqueAtualizado[produto.id]?.item?.quantidade ?: 0
+                    qtdPedido > qtdEstoque
+                }
+
+                if (semEstoqueSuficiente) {
+                    // Aqui você pode lançar um evento para UI mostrar mensagem de erro
+                    return@launch // cancela o pedido
+                }
+
+                val total = produtosMap.entries.sumOf { it.key.preco * it.value }
                 val produtosParaPedido = produtosMap.map { it.key.id to it.value }.toMap()
 
                 val pedido = Pedido(
@@ -99,10 +134,15 @@ class PedidosViewModel : ViewModel() {
                 )
                 vendaRepository.registrarVenda(venda)
 
-                // atualiza estoque no Firestore com quantidade negativa para retirar
+                // Atualiza o estoque garantindo que não fique negativo
                 produtosMap.forEach { (produto, quantidade) ->
-                    estoqueRepository.atualizarQuantidade(produto.id, -quantidade)
+                    val qtdAtualEstoque = estoqueAtualizado[produto.id]?.item?.quantidade ?: 0
+                    val novaQtd = (qtdAtualEstoque - quantidade).coerceAtLeast(0)
+                    estoqueRepository.atualizarQuantidade(produto.id, novaQtd)
                 }
+
+                // Atualiza os dados da ViewModel
+                carregarEstoque()
 
                 limparPedido()
                 carregarPedidos()

@@ -25,12 +25,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import com.example.sweetjoygeladinhos.SweetJoyApp
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.utils.saveImageToInternalStorage
 import com.example.sweetjoygeladinhos.viewmodel.ProdutoViewModel
 import kotlinx.coroutines.launch
 import java.io.File
+import androidx.compose.foundation.background
+
 @Composable
 fun ProdutosScreen(
     navController: NavController,
@@ -48,6 +49,7 @@ fun ProdutosScreenContent(
     viewModel: ProdutoViewModel
 ) {
     val produtos by viewModel.produtos.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState(initial = false) // <- loading vindo do ViewModel
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -158,36 +160,54 @@ fun ProdutosScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(8.dp),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(8.dp)
         ) {
-            items(produtos) { produto ->
-                ProdutoCard(
-                    produto = produto,
-                    onEdit = {
-                        produtoEmEdicao = produto
-                        nome = produto.nome
-                        sabor = produto.sabor
-                        preco = produto.preco.toString()
-                        imagemUri = produto.imagemUri
-                        showDialog = true
-                    },
-                    onDelete = {
-                        produtoParaExcluir = produto
-                        showDeleteConfirm = true
-                    },
-                    onImageClick = { imagemEmTelaCheia = produto.imagemUri }
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(produtos) { produto ->
+                    ProdutoCard(
+                        produto = produto,
+                        onEdit = {
+                            produtoEmEdicao = produto
+                            nome = produto.nome
+                            sabor = produto.sabor
+                            preco = produto.preco.toString()
+                            imagemUri = produto.imagemUri
+                            showDialog = true
+                        },
+                        onDelete = {
+                            produtoParaExcluir = produto
+                            showDeleteConfirm = true
+                        },
+                        onImageClick = { imagemEmTelaCheia = produto.imagemUri }
+                    )
+                }
+            }
+
+            // Indicador de loading sobreposto na tela enquanto carrega
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }
+
+    // Diálogos e outros componentes abaixo (sem alteração)...
 
     if (showDialog) {
         AlertDialog(
@@ -280,43 +300,34 @@ fun ProdutoCard(
     onImageClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onImageClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .padding(8.dp)
+                .clickable { onImageClick() },
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            produto.imagemUri?.let { uri ->
+            produto.imagemUri?.let { uriString ->
+                val file = File(uriString)
                 Image(
-                    painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(File(uri))
-                            .crossfade(true)
-                            .error(android.R.drawable.stat_notify_error)
-                            .build()
-                    ),
-                    contentDescription = "Imagem do Produto",
+                    painter = rememberAsyncImagePainter(file),
+                    contentDescription = produto.nome,
                     modifier = Modifier
-                        .size(120.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable { onImageClick() },
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Crop
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(produto.nome, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(produto.sabor, fontSize = 14.sp)
-            Text("R$ %.2f".format(produto.preco), fontSize = 14.sp)
+            Text(text = produto.nome, style = MaterialTheme.typography.titleMedium)
+            Text(text = "Sabor: ${produto.sabor}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "R$ %.2f".format(produto.preco), style = MaterialTheme.typography.bodyMedium)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.End
             ) {
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Editar")

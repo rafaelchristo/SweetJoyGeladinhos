@@ -35,9 +35,10 @@ fun PedidosScreen(viewModel: PedidosViewModel) {
 fun PedidosScreenContent(viewModel: PedidosViewModel) {
     val context = LocalContext.current
 
-    // Corrigido: coletar o StateFlow com collectAsState() e dar um valor inicial
     val produtos by viewModel.produtos.collectAsState(initial = emptyList())
     val produtosSelecionados by viewModel.produtosSelecionados.collectAsState(initial = emptyMap())
+    val estoque by viewModel.estoque.collectAsState(initial = emptyList())
+    val carregandoEstoque by viewModel.carregandoEstoque.collectAsState()
 
     Scaffold(
         topBar = {
@@ -57,75 +58,97 @@ fun PedidosScreenContent(viewModel: PedidosViewModel) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(4.dp)
-            ) {
-                items(produtos) { produto ->
-                    val quantidade = produtosSelecionados[produto] ?: 0
+            if (carregandoEstoque) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(4.dp)
+                ) {
+                    items(produtos) { produto ->
+                        val quantidade = produtosSelecionados[produto] ?: 0
+                        val estoqueDisponivel = estoque.find { it.produto.id == produto.id }?.item?.quantidade ?: 0
+                        val podeAdicionarMais = quantidade < estoqueDisponivel
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        elevation = CardDefaults.cardElevation(4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(8.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            elevation = CardDefaults.cardElevation(4.dp)
                         ) {
-                            produto.imagemUri?.let { uriString ->
-                                val imagePainter = rememberAsyncImagePainter(model = Uri.parse(uriString))
-                                Image(
-                                    painter = imagePainter,
-                                    contentDescription = "Imagem do Produto",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(120.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                            }
-
-                            Text(
-                                text = produto.nome,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "R$ %.2f".format(produto.preco),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 4.dp)
+                            Column(
+                                modifier = Modifier.padding(8.dp)
                             ) {
-                                IconButton(onClick = {
-                                    if (quantidade > 0) {
-                                        viewModel.removerProduto(produto)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Remove, contentDescription = "Diminuir", tint = MaterialTheme.colorScheme.primary)
+                                produto.imagemUri?.let { uriString ->
+                                    val imagePainter = rememberAsyncImagePainter(model = Uri.parse(uriString))
+                                    Image(
+                                        painter = imagePainter,
+                                        contentDescription = "Imagem do Produto",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(120.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
                                 }
 
                                 Text(
-                                    text = "$quantidade",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    text = produto.nome,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "R$ %.2f".format(produto.preco),
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
-                                IconButton(onClick = {
-                                    viewModel.adicionarProduto(produto)
-                                }) {
-                                    Icon(Icons.Default.Add, contentDescription = "Aumentar", tint = MaterialTheme.colorScheme.primary)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    IconButton(onClick = {
+                                        if (quantidade > 0) {
+                                            viewModel.removerProduto(produto)
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Remove, contentDescription = "Diminuir", tint = MaterialTheme.colorScheme.primary)
+                                    }
+
+                                    Text(
+                                        text = "$quantidade",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    IconButton(
+                                        onClick = {
+                                            if (podeAdicionarMais) {
+                                                viewModel.adicionarProduto(produto)
+                                            }
+                                        },
+                                        enabled = podeAdicionarMais
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Aumentar",
+                                            tint = if (podeAdicionarMais) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                    }
                                 }
                             }
                         }

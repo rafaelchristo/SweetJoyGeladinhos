@@ -17,50 +17,60 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import com.example.sweetjoygeladinhos.SweetJoyApp
+import kotlinx.coroutines.launch
 import com.example.sweetjoygeladinhos.model.EstoqueItemComProduto
 import com.example.sweetjoygeladinhos.model.Venda
 import com.example.sweetjoygeladinhos.viewmodel.VendaViewModel
-import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun VendasScreen(
     vendaViewModel: VendaViewModel = viewModel(),
-    estoqueList: List<EstoqueItemComProduto> // você deve passar ou obter via outro ViewModel
+    estoqueList: List<EstoqueItemComProduto> // Recebe lista atualizada de estoque com produtos
 ) {
     val vendas by vendaViewModel.vendas.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Estado da venda atual (produtos selecionados e suas quantidades)
-    var itensVenda by remember { mutableStateOf(mutableMapOf<String, Int>()) } // produtoId -> quantidade
+    var itensVenda by remember { mutableStateOf(mutableMapOf<String, Int>()) }
 
     fun adicionarOuAtualizarProduto(produtoId: String, quantidade: Int) {
+        val estoqueDisponivel = estoqueList.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
         if (quantidade <= 0) {
             itensVenda.remove(produtoId)
-        } else {
+        } else if (quantidade <= estoqueDisponivel) {
             itensVenda[produtoId] = quantidade
+        } else {
+            // Opcional: notificar que estoque não é suficiente
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Quantidade disponível no estoque: $estoqueDisponivel")
+            }
         }
     }
 
     fun calcularTotal(): Double {
-        var total = 0.0
-        for ((produtoId, qtd) in itensVenda) {
-            val produto = estoqueList.find { it.item.produtoId == produtoId }?.produto
-            val preco = produto?.preco ?: 0.0
-            total += preco * qtd
+        return itensVenda.entries.sumOf { (produtoId, qtd) ->
+            val preco = estoqueList.find { it.item.produtoId == produtoId }?.produto?.preco ?: 0.0
+            preco * qtd
         }
-        return total
     }
 
     fun registrarVenda() {
         if (itensVenda.isEmpty()) {
             coroutineScope.launch {
                 snackbarHostState.showSnackbar("Selecione ao menos um produto com quantidade")
+            }
+            return
+        }
+
+        // Verifica se alguma quantidade ultrapassa o estoque (extra check)
+        val produtoComEstoqueInsuficiente = itensVenda.any { (produtoId, qtd) ->
+            val estoqueDisponivel = estoqueList.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
+            qtd > estoqueDisponivel
+        }
+        if (produtoComEstoqueInsuficiente) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Quantidade de algum produto ultrapassa o estoque disponível.")
             }
             return
         }
@@ -83,11 +93,11 @@ fun VendasScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Lista de produtos para escolher quantidade
             LazyColumn {
                 items(estoqueList) { item ->
                     val produtoId = item.item.produtoId
                     val quantidadeSelecionada = itensVenda[produtoId] ?: 0
+                    val estoqueDisponivel = item.item.quantidade
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -107,12 +117,21 @@ fun VendasScreen(
                         ) {
                             Icon(Icons.Default.Remove, contentDescription = "Diminuir")
                         }
-                        Text(text = quantidadeSelecionada.toString(), modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                        Text(
+                            text = quantidadeSelecionada.toString(),
+                            modifier = Modifier.width(24.dp),
+                            textAlign = TextAlign.Center
+                        )
                         IconButton(
                             onClick = {
                                 val novaQtd = quantidadeSelecionada + 1
-                                // opcional: verificar estoque disponível antes de aumentar
-                                adicionarOuAtualizarProduto(produtoId, novaQtd)
+                                if (novaQtd <= estoqueDisponivel) {
+                                    adicionarOuAtualizarProduto(produtoId, novaQtd)
+                                } else {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Estoque insuficiente: máximo $estoqueDisponivel")
+                                    }
+                                }
                             }
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "Aumentar")
@@ -144,7 +163,9 @@ fun VendasScreen(
             LazyColumn {
                 items(vendas) { venda ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Text("Data: ${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(venda.dataVenda))}")
@@ -162,7 +183,7 @@ fun VendasScreen(
 
                             Row {
                                 OutlinedButton(onClick = {
-                                    // Implementar edição se quiser
+                                    // Pode implementar editar venda aqui, se desejar
                                 }) {
                                     Text("Editar")
                                 }
@@ -180,4 +201,3 @@ fun VendasScreen(
         }
     }
 }
-
