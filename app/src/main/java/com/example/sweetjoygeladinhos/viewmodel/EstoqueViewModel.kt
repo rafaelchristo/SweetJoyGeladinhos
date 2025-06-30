@@ -42,7 +42,7 @@ class EstoqueViewModel : ViewModel() {
         }
     }
 
-    private fun carregarEstoque() = viewModelScope.launch {
+    fun carregarEstoque() = viewModelScope.launch {
         try {
             val estoqueAtual = estoqueRepository.obterTodosComProduto()
 

@@ -32,24 +32,14 @@ import kotlinx.coroutines.launch
 import java.io.File
 import androidx.compose.foundation.background
 
-@Composable
-fun ProdutosScreen(
-    navController: NavController,
-    viewModel: ProdutoViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-) {
-    SweetJoyGeladinhosTheme {
-        ProdutosScreenContent(navController, viewModel)
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProdutosScreenContent(
+fun ProdutosScreen(
     navController: NavController,
     viewModel: ProdutoViewModel
 ) {
     val produtos by viewModel.produtos.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState(initial = false) // <- loading vindo do ViewModel
+    val isLoading by viewModel.isLoading.collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -57,7 +47,7 @@ fun ProdutosScreenContent(
     var nome by remember { mutableStateOf("") }
     var sabor by remember { mutableStateOf("") }
     var preco by remember { mutableStateOf("") }
-    var imagemUri by remember { mutableStateOf<String?>(null) }
+    var imagemUriLocal by remember { mutableStateOf<Uri?>(null) } // Uri do arquivo local selecionado
     var produtoEmEdicao by remember { mutableStateOf<Produto?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var produtoParaExcluir by remember { mutableStateOf<Produto?>(null) }
@@ -69,8 +59,7 @@ fun ProdutosScreenContent(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val savedUri = saveImageToInternalStorage(context, it)
-            imagemUri = savedUri
+            imagemUriLocal = it // guarda a Uri local para upload posterior
         }
     }
 
@@ -78,7 +67,7 @@ fun ProdutosScreenContent(
         nome = ""
         sabor = ""
         preco = ""
-        imagemUri = null
+        imagemUriLocal = null
         produtoEmEdicao = null
     }
 
@@ -92,38 +81,37 @@ fun ProdutosScreenContent(
         }
 
         val produto = Produto(
-            id = produtoEmEdicao?.id ?: "", // Ajuste para Firestore ID
+            id = produtoEmEdicao?.id ?: "",
             nome = nome,
             sabor = sabor,
             preco = precoDouble,
-            imagemUri = imagemUri
+            imagemUri = produtoEmEdicao?.imagemUri // Mantém a URL atual, caso não mude imagem
         )
 
-        coroutineScope.launch {
-            val sucesso = if (produtoEmEdicao == null) {
-                viewModel.adicionarProduto(produto)
-            } else {
-                viewModel.atualizarProduto(produto)
-            }
-
-            if (sucesso) {
-                showDialog = false
-                limparCampos()
-            } else {
-                snackbarHostState.showSnackbar("Erro ao salvar produto")
+        viewModel.salvarProdutoComImagem(produto, imagemUriLocal) { sucesso ->
+            coroutineScope.launch {
+                if (sucesso) {
+                    showDialog = false
+                    limparCampos()
+                    snackbarHostState.showSnackbar("Produto salvo com sucesso")
+                } else {
+                    snackbarHostState.showSnackbar("Erro ao salvar produto")
+                }
             }
         }
     }
 
     fun deletarProduto() {
         produtoParaExcluir?.let { produto ->
-            coroutineScope.launch {
-                val sucesso = viewModel.deletarProduto(produto.id)
-                if (sucesso) {
-                    showDeleteConfirm = false
-                    produtoParaExcluir = null
-                } else {
-                    snackbarHostState.showSnackbar("Erro ao deletar produto")
+            viewModel.deletarProduto(produto.id) { sucesso ->
+                coroutineScope.launch {
+                    if (sucesso) {
+                        showDeleteConfirm = false
+                        produtoParaExcluir = null
+                        snackbarHostState.showSnackbar("Produto deletado")
+                    } else {
+                        snackbarHostState.showSnackbar("Erro ao deletar produto")
+                    }
                 }
             }
         }
@@ -137,12 +125,7 @@ fun ProdutosScreenContent(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                }
             )
         },
         floatingActionButton = {
@@ -150,16 +133,13 @@ fun ProdutosScreenContent(
                 onClick = {
                     limparCampos()
                     showDialog = true
-                },
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                }
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar Produto")
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -181,7 +161,7 @@ fun ProdutosScreenContent(
                             nome = produto.nome
                             sabor = produto.sabor
                             preco = produto.preco.toString()
-                            imagemUri = produto.imagemUri
+                            imagemUriLocal = null // ao editar, só atualiza se trocar imagem
                             showDialog = true
                         },
                         onDelete = {
@@ -193,7 +173,6 @@ fun ProdutosScreenContent(
                 }
             }
 
-            // Indicador de loading sobreposto na tela enquanto carrega
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -206,8 +185,6 @@ fun ProdutosScreenContent(
             }
         }
     }
-
-    // Diálogos e outros componentes abaixo (sem alteração)...
 
     if (showDialog) {
         AlertDialog(
@@ -224,10 +201,20 @@ fun ProdutosScreenContent(
                             Text("Selecionar Imagem")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        imagemUri?.let { uri ->
+
+                        // Mostrar preview da imagem local selecionada, ou imagem atual do produto (via URL)
+                        if (imagemUriLocal != null) {
                             Image(
-                                painter = rememberAsyncImagePainter(File(uri)),
-                                contentDescription = null,
+                                painter = rememberAsyncImagePainter(imagemUriLocal),
+                                contentDescription = "Imagem selecionada",
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                            )
+                        } else if (produtoEmEdicao?.imagemUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(produtoEmEdicao!!.imagemUri),
+                                contentDescription = "Imagem atual",
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(MaterialTheme.shapes.small)
@@ -245,8 +232,7 @@ fun ProdutosScreenContent(
                 OutlinedButton(onClick = { showDialog = false }) {
                     Text("Cancelar")
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+            }
         )
     }
 
@@ -264,12 +250,11 @@ fun ProdutosScreenContent(
                 OutlinedButton(onClick = { showDeleteConfirm = false }) {
                     Text("Cancelar")
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+            }
         )
     }
 
-    imagemEmTelaCheia?.let { uri ->
+    imagemEmTelaCheia?.let { url ->
         AlertDialog(
             onDismissRequest = { imagemEmTelaCheia = null },
             confirmButton = {
@@ -279,15 +264,14 @@ fun ProdutosScreenContent(
             },
             text = {
                 Image(
-                    painter = rememberAsyncImagePainter(File(uri)),
+                    painter = rememberAsyncImagePainter(url),
                     contentDescription = "Imagem em Tela Cheia",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(300.dp),
                     contentScale = ContentScale.Crop
                 )
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+            }
         )
     }
 }
@@ -309,10 +293,9 @@ fun ProdutoCard(
                 .clickable { onImageClick() },
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            produto.imagemUri?.let { uriString ->
-                val file = File(uriString)
+            produto.imagemUri?.let { url ->
                 Image(
-                    painter = rememberAsyncImagePainter(file),
+                    painter = rememberAsyncImagePainter(url),
                     contentDescription = produto.nome,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -339,3 +322,4 @@ fun ProdutoCard(
         }
     }
 }
+

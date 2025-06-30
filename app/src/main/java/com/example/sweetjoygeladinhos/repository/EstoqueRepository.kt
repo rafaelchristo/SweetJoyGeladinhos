@@ -34,7 +34,6 @@ class EstoqueRepository {
         return snapshot.documents.mapNotNull { it.toObject(EstoqueItem::class.java) }
     }
 
-    // FUNÇÃO PRINCIPAL: lista itens do estoque juntando com dados do produto
     suspend fun obterTodosComProduto(): List<EstoqueItemComProduto> {
         val estoqueSnapshot = estoqueRef.get().await()
         val estoqueItems = estoqueSnapshot.toObjects(EstoqueItem::class.java)
@@ -50,6 +49,15 @@ class EstoqueRepository {
             if (produto != null) {
                 EstoqueItemComProduto(item, produto)
             } else null
+        }
+    }
+
+    // ✅ NOVO MÉTODO seguro para subtrair do estoque
+    suspend fun subtrairQuantidade(produtoId: String, quantidade: Int) {
+        val item = obterItem(produtoId)
+        if (item != null && item.quantidade >= quantidade) {
+            val novaQuantidade = item.quantidade - quantidade
+            atualizarQuantidade(produtoId, novaQuantidade)
         }
     }
 }

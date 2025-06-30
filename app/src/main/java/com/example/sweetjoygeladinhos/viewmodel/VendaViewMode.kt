@@ -26,12 +26,32 @@ class VendaViewModel : ViewModel() {
         }
     }
 
-    fun registrarVenda(venda: Venda) {
+    fun registrarVenda(venda: Venda, onEstoqueInsuficiente: (produtoId: String) -> Unit = {}) {
         viewModelScope.launch {
-            // Atualiza o estoque subtraindo as quantidades da venda
-            venda.produtos.forEach { (produtoId, quantidade) ->
-                estoqueRepository.atualizarQuantidade(produtoId, -quantidade)
+            val estoqueAtual = estoqueRepository.obterTodosComProduto()
+
+            // Verifica se todos os produtos têm estoque suficiente
+            val algumInsuficiente = venda.produtos.any { (produtoId, quantidade) ->
+                val atual = estoqueAtual.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
+                quantidade > atual
             }
+
+            if (algumInsuficiente) {
+                venda.produtos.forEach { (produtoId, quantidade) ->
+                    val atual = estoqueAtual.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
+                    if (quantidade > atual) {
+                        onEstoqueInsuficiente(produtoId)
+                    }
+                }
+                return@launch
+            }
+
+            // ✅ Subtrai de forma segura
+            venda.produtos.forEach { (produtoId, quantidade) ->
+                estoqueRepository.subtrairQuantidade(produtoId, quantidade)
+            }
+
+            // Registra a venda
             vendaRepository.registrarVenda(venda)
             carregarVendas()
         }

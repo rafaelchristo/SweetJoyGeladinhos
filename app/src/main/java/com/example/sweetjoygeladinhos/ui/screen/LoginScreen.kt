@@ -1,5 +1,6 @@
 package com.example.sweetjoygeladinhos.ui.screens
 
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,17 +26,16 @@ import androidx.navigation.NavController
 import com.example.sweetjoygeladinhos.R
 import com.example.sweetjoygeladinhos.model.UserType
 import com.example.sweetjoygeladinhos.viewmodel.UserViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
     var selectedRole by remember { mutableStateOf(UserType.ADMIN) }
 
-    val softPink = Color(0xFFFFC1CC)  // rosa muito suave
-    val softRose = Color(0xFFFFD6E0)  // outro tom suave de rosa
+    val softPink = Color(0xFFFFC1CC)
+    val softRose = Color(0xFFFFD6E0)
 
-    val gradient = Brush.verticalGradient(
-        colors = listOf(softPink, softRose)
-    )
+    val gradient = Brush.verticalGradient(colors = listOf(softPink, softRose))
 
     Box(
         modifier = Modifier
@@ -75,7 +75,7 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                 Text(
                     text = "Escolha o seu perfil",
                     style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
-                    color = Color(0xFF8B1E3F)  // tom de rosa escuro para contraste
+                    color = Color(0xFF8B1E3F)
                 )
 
                 Row(
@@ -86,17 +86,11 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                         onClick = { selectedRole = UserType.ADMIN },
                         shape = CircleShape,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (selectedRole == UserType.ADMIN)
-                                softPink
-                            else Color.Gray
+                            contentColor = if (selectedRole == UserType.ADMIN) softPink else Color.Gray
                         ),
                         border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AdminPanelSettings,
-                            contentDescription = "Administrador",
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.Default.AdminPanelSettings, contentDescription = "Administrador", modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Admin")
                     }
@@ -105,17 +99,11 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                         onClick = { selectedRole = UserType.CLIENT },
                         shape = CircleShape,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (selectedRole == UserType.CLIENT)
-                                softPink
-                            else Color.Gray
+                            contentColor = if (selectedRole == UserType.CLIENT) softPink else Color.Gray
                         ),
                         border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Cliente",
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.Default.Person, contentDescription = "Cliente", modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Cliente")
                     }
@@ -124,8 +112,23 @@ fun LoginScreen(navController: NavController, userViewModel: UserViewModel) {
                 Button(
                     onClick = {
                         userViewModel.userType = selectedRole
-                        navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
+
+                        val auth = FirebaseAuth.getInstance()
+                        if (auth.currentUser == null) {
+                            auth.signInAnonymously()
+                                .addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        navController.navigate("home") {
+                                            popUpTo("login") { inclusive = true }
+                                        }
+                                    } else {
+                                        Log.e("Login", "Erro ao autenticar anonimamente", task.exception)
+                                    }
+                                }
+                        } else {
+                            navController.navigate("home") {
+                                popUpTo("login") { inclusive = true }
+                            }
                         }
                     },
                     modifier = Modifier
