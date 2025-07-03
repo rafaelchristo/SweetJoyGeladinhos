@@ -86,104 +86,111 @@ fun VendasScreen(
         }
 
         Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Registrar Venda", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-
-                if (carregando) {
-                    CircularProgressIndicator()
-                } else {
-                    LazyColumn {
-                        items(estoqueList) { item ->
-                            val produtoId = item.item.produtoId
-                            val nome = item.produto.nome
-                            val quantidadeSelecionada = itensVenda[produtoId] ?: 0
-                            val estoqueDisponivel = item.item.quantidade
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = nome,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(onClick = {
-                                    val novaQtd = (quantidadeSelecionada - 1).coerceAtLeast(0)
-                                    adicionarOuAtualizarProduto(produtoId, novaQtd)
-                                }) {
-                                    Icon(Icons.Default.Remove, contentDescription = "Diminuir")
-                                }
-                                Text(
-                                    text = quantidadeSelecionada.toString(),
-                                    modifier = Modifier.width(24.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                                IconButton(onClick = {
-                                    val novaQtd = quantidadeSelecionada + 1
-                                    adicionarOuAtualizarProduto(produtoId, novaQtd)
-                                }) {
-                                    Icon(Icons.Default.Add, contentDescription = "Aumentar")
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-                    Text("Total: R$ %.2f".format(calcularTotal()), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { registrarVenda() },
-                        enabled = itensVenda.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Registrar Venda")
-                    }
+                item {
+                    Text("Registrar Venda", style = MaterialTheme.typography.headlineSmall)
+                    Divider(thickness = 2.dp, color = MaterialTheme.colorScheme.primary)
                 }
 
-                Spacer(Modifier.height(24.dp))
-                Text("Vendas Registradas", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(8.dp))
+                if (carregando) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    items(estoqueList) { item ->
+                        val produtoId = item.item.produtoId
+                        val nome = item.produto.nome
+                        val quantidadeSelecionada = itensVenda[produtoId] ?: 0
+                        val estoqueDisponivel = item.item.quantidade
 
-                val vendasOrdenadas = vendas.sortedByDescending { it.dataVenda }
-
-                LazyColumn {
-                    items(vendasOrdenadas) { venda ->
-                        Card(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("Data: ${SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date(venda.dataVenda))}")
-                                Text("Total: R$ %.2f".format(venda.total))
-                                Spacer(Modifier.height(4.dp))
-                                venda.produtos.forEach { (produtoId, qtd) ->
-                                    val produto = estoqueList.find { it.item.produtoId == produtoId }?.produto
-                                    val nome = produto?.nome ?: "Produto desconhecido"
-                                    Text("$nome: $qtd")
+                            Text(
+                                text = nome,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = {
+                                val novaQtd = (quantidadeSelecionada - 1).coerceAtLeast(0)
+                                adicionarOuAtualizarProduto(produtoId, novaQtd)
+                            }) {
+                                Icon(Icons.Default.Remove, contentDescription = "Diminuir")
+                            }
+                            Text(
+                                text = quantidadeSelecionada.toString(),
+                                modifier = Modifier.width(24.dp),
+                                textAlign = TextAlign.Center
+                            )
+                            IconButton(onClick = {
+                                val novaQtd = quantidadeSelecionada + 1
+                                adicionarOuAtualizarProduto(produtoId, novaQtd)
+                            }) {
+                                Icon(Icons.Default.Add, contentDescription = "Aumentar")
+                            }
+                        }
+                    }
+
+                    item {
+                        Text("Total: R$ %.2f".format(calcularTotal()), style = MaterialTheme.typography.titleMedium)
+                        Button(
+                            onClick = { registrarVenda() },
+                            enabled = itensVenda.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Registrar Venda")
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Vendas Registradas", style = MaterialTheme.typography.headlineSmall)
+                    Divider(thickness = 2.dp, color = MaterialTheme.colorScheme.secondary)
+                }
+
+                items(vendaViewModel.vendas.value.sortedByDescending { it.dataVenda }) { venda ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("Data: ${SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date(venda.dataVenda))}")
+                            Text("Total: R$ %.2f".format(venda.total))
+                            Spacer(Modifier.height(4.dp))
+                            venda.produtos.forEach { (produtoId, qtd) ->
+                                val produto = estoqueList.find { it.item.produtoId == produtoId }?.produto
+                                val nome = produto?.nome ?: "Produto desconhecido"
+                                Text("$nome: $qtd")
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Row {
+                                OutlinedButton(onClick = {
+                                    // Implementar edição se desejar
+                                }) {
+                                    Text("Editar")
                                 }
-                                Spacer(Modifier.height(8.dp))
-                                Row {
-                                    OutlinedButton(onClick = {
-                                        // Implementar edição se desejar
-                                    }) {
-                                        Text("Editar")
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    OutlinedButton(onClick = {
-                                        vendaViewModel.deletarVenda(venda.id)
-                                        estoqueViewModel.carregarEstoque()
-                                    }) {
-                                        Text("Excluir")
-                                    }
+                                Spacer(Modifier.width(8.dp))
+                                OutlinedButton(onClick = {
+                                    vendaViewModel.deletarVenda(venda.id)
+                                    estoqueViewModel.carregarEstoque()
+                                }) {
+                                    Text("Excluir")
                                 }
                             }
                         }
