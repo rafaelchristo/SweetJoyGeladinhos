@@ -33,7 +33,13 @@ class ReceitaViewModel(
     fun salvarReceita(receita: Receita, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             _loading.value = true
-            repository.adicionarReceita(receita)
+            if (receita.id.isBlank()) {
+                // Nova receita
+                repository.adicionarReceita(receita)
+            } else {
+                // Atualização
+                repository.atualizarReceita(receita)
+            }
             carregarReceitas()
             _loading.value = false
             onComplete()

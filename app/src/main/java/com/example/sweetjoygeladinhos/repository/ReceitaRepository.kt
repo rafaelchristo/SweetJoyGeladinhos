@@ -23,4 +23,10 @@ class ReceitaRepository {
     suspend fun deletarReceita(id: String) {
         receitasRef.document(id).delete().await()
     }
+    suspend fun atualizarReceita(receita: Receita) {
+        if (receita.id.isNotBlank()) {
+            receitasRef.document(receita.id).set(receita).await()
+        }
+    }
+
 }

@@ -5,13 +5,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sweetjoygeladinhos.model.EstoqueItem
@@ -36,7 +37,7 @@ fun EstoqueScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    var produtoParaExcluir by remember { mutableStateOf<EstoqueItemComProduto?>(null) } // Para confirmação exclusão
+    var produtoParaExcluir by remember { mutableStateOf<EstoqueItemComProduto?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -51,7 +52,6 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Dropdown para escolher produto ou loading
             when {
                 carregandoProdutos -> {
                     Row(
@@ -109,7 +109,6 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo quantidade (apenas números, teclado numérico)
             TextField(
                 value = quantidade,
                 onValueChange = { novoValor ->
@@ -156,7 +155,6 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Grid 2 colunas
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
@@ -181,7 +179,6 @@ fun EstoqueScreen(
             }
         }
 
-        // Diálogo de confirmação para exclusão
         if (produtoParaExcluir != null) {
             AlertDialog(
                 onDismissRequest = { produtoParaExcluir = null },
@@ -217,51 +214,74 @@ fun EstoqueItemCard(
     var quantidadeEditada by remember { mutableStateOf(itemComProduto.item.quantidade.toString()) }
 
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = MaterialTheme.shapes.large
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = itemComProduto.produto.nome, style = MaterialTheme.typography.titleMedium)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
+        ) {
+            Text(
+                text = itemComProduto.produto.nome,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextField(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
                     value = quantidadeEditada,
                     onValueChange = {
                         if (it.all { char -> char.isDigit() }) {
                             quantidadeEditada = it
                         }
                     },
-                    label = { Text("Un") },
+                    label = { Text("Qtd") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions.Default.copy(
-                        keyboardType = KeyboardType.Number
-                    ),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Button(onClick = {
-                    val novaQtd = quantidadeEditada.toIntOrNull()
-                    if (novaQtd != null) {
-                        onAtualizar(
-                            itemComProduto.item.copy(quantidade = novaQtd)
-                        )
-                    }
-                }) {
-                    Text("Atualizar")
+                IconButton(
+                    onClick = {
+                        val novaQtd = quantidadeEditada.toIntOrNull()
+                        if (novaQtd != null) {
+                            onAtualizar(
+                                itemComProduto.item.copy(quantidade = novaQtd)
+                            )
+                        }
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Atualizar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextButton(onClick = {
-                onExcluirSolicitado(itemComProduto)
-            }) {
-                Text("Excluir", color = MaterialTheme.colorScheme.error)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = { onExcluirSolicitado(itemComProduto) }) {
+                    Text("Excluir", color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
 }
-
