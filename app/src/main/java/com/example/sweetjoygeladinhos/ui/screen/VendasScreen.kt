@@ -33,6 +33,10 @@ fun VendasScreen(
         val snackbarHostState = remember { SnackbarHostState() }
 
         var itensVenda by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+        var vendaEditando by remember { mutableStateOf<com.example.sweetjoygeladinhos.model.Venda?>(null) }
+
+        // Estado para confirmar exclusão
+        var vendaParaExcluir by remember { mutableStateOf<com.example.sweetjoygeladinhos.model.Venda?>(null) }
 
         fun adicionarOuAtualizarProduto(produtoId: String, quantidade: Int) {
             val estoqueDisponivel = estoqueList.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
@@ -54,7 +58,7 @@ fun VendasScreen(
             }
         }
 
-        fun registrarVenda() {
+        fun salvarOuAtualizarVenda() {
             if (itensVenda.isEmpty()) {
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar("Selecione ao menos um produto com quantidade")
@@ -62,26 +66,30 @@ fun VendasScreen(
                 return
             }
 
-            val produtoComEstoqueInsuficiente = itensVenda.any { (produtoId, qtd) ->
-                val estoqueDisponivel = estoqueList.find { it.item.produtoId == produtoId }?.item?.quantidade ?: 0
-                qtd > estoqueDisponivel
-            }
-
-            if (produtoComEstoqueInsuficiente) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Quantidade de algum produto ultrapassa o estoque disponível.")
-                }
-                return
-            }
-
-            vendaViewModel.registrarVenda(
-                com.example.sweetjoygeladinhos.model.Venda(
-                    produtos = itensVenda,
-                    total = calcularTotal(),
-                    dataVenda = System.currentTimeMillis()
-                )
+            val venda = vendaEditando?.copy(
+                produtos = itensVenda,
+                total = calcularTotal(),
+                dataVenda = System.currentTimeMillis()
+            ) ?: com.example.sweetjoygeladinhos.model.Venda(
+                produtos = itensVenda,
+                total = calcularTotal(),
+                dataVenda = System.currentTimeMillis()
             )
+
+            if (vendaEditando == null) {
+                vendaViewModel.registrarVenda(venda) { }
+            } else {
+                vendaViewModel.editarVenda(venda) { sucesso ->
+                    if (!sucesso) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Erro ao atualizar venda")
+                        }
+                    }
+                }
+            }
+
             itensVenda = emptyMap()
+            vendaEditando = null
             estoqueViewModel.carregarEstoque()
         }
 
@@ -93,7 +101,10 @@ fun VendasScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Text("Registrar Venda", style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        if (vendaEditando == null) "Registrar Venda" else "Editar Venda",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
                     Divider(thickness = 2.dp, color = MaterialTheme.colorScheme.primary)
                 }
 
@@ -113,7 +124,6 @@ fun VendasScreen(
                         val produtoId = item.item.produtoId
                         val nome = item.produto.nome
                         val quantidadeSelecionada = itensVenda[produtoId] ?: 0
-                        val estoqueDisponivel = item.item.quantidade
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -121,10 +131,7 @@ fun VendasScreen(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                         ) {
-                            Text(
-                                text = nome,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Text(nome, modifier = Modifier.weight(1f))
                             IconButton(onClick = {
                                 val novaQtd = (quantidadeSelecionada - 1).coerceAtLeast(0)
                                 adicionarOuAtualizarProduto(produtoId, novaQtd)
@@ -148,11 +155,11 @@ fun VendasScreen(
                     item {
                         Text("Total: R$ %.2f".format(calcularTotal()), style = MaterialTheme.typography.titleMedium)
                         Button(
-                            onClick = { registrarVenda() },
+                            onClick = { salvarOuAtualizarVenda() },
                             enabled = itensVenda.isNotEmpty(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Registrar Venda")
+                            Text(if (vendaEditando == null) "Registrar Venda" else "Atualizar Venda")
                         }
                     }
                 }
@@ -163,7 +170,7 @@ fun VendasScreen(
                     Divider(thickness = 2.dp, color = MaterialTheme.colorScheme.secondary)
                 }
 
-                items(vendaViewModel.vendas.value.sortedByDescending { it.dataVenda }) { venda ->
+                items(vendas.sortedByDescending { it.dataVenda }) { venda ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -181,14 +188,14 @@ fun VendasScreen(
                             Spacer(Modifier.height(8.dp))
                             Row {
                                 OutlinedButton(onClick = {
-                                    // Implementar edição se desejar
+                                    vendaEditando = venda
+                                    itensVenda = venda.produtos.toMutableMap()
                                 }) {
                                     Text("Editar")
                                 }
                                 Spacer(Modifier.width(8.dp))
                                 OutlinedButton(onClick = {
-                                    vendaViewModel.deletarVenda(venda.id)
-                                    estoqueViewModel.carregarEstoque()
+                                    vendaParaExcluir = venda
                                 }) {
                                     Text("Excluir")
                                 }
@@ -197,6 +204,38 @@ fun VendasScreen(
                     }
                 }
             }
+        }
+
+        // 🔴 AlertDialog para confirmar exclusão
+        if (vendaParaExcluir != null) {
+            AlertDialog(
+                onDismissRequest = { vendaParaExcluir = null },
+                title = { Text("Confirmar Exclusão") },
+                text = { Text("Tem certeza que deseja excluir esta venda?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        vendaParaExcluir?.let { venda ->
+                            vendaViewModel.deletarVenda(venda.id) { sucesso ->
+                                if (!sucesso) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Erro ao excluir venda")
+                                    }
+                                } else {
+                                    estoqueViewModel.carregarEstoque()
+                                }
+                            }
+                        }
+                        vendaParaExcluir = null
+                    }) {
+                        Text("Excluir", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { vendaParaExcluir = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }

@@ -57,10 +57,32 @@ class VendaViewModel : ViewModel() {
         }
     }
 
-    fun deletarVenda(id: String) {
+    // ✅ Novo método para editar uma venda
+    fun editarVenda(venda: Venda, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            vendaRepository.deletarVenda(id)
-            carregarVendas()
+            try {
+                vendaRepository.atualizarVenda(venda)
+                carregarVendas()
+                onResult(true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onResult(false)
+            }
+        }
+    }
+
+    private fun VendaRepository.atualizarVenda(venda: Venda) {}
+
+    fun deletarVenda(id: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                vendaRepository.deletarVenda(id)
+                carregarVendas()
+                onResult(true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onResult(false)
+            }
         }
     }
 }

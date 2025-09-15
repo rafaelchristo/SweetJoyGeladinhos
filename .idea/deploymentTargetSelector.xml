@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="SweetJoyGeladinhos.app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-06-25T20:11:13.947877100Z">
+        <DropdownSelection timestamp="2025-08-28T11:54:47.317666700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=0081584837" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\rafaelch\.android\avd\Pixel_8.avd" />
             </handle>
           </Target>
         </DropdownSelection>

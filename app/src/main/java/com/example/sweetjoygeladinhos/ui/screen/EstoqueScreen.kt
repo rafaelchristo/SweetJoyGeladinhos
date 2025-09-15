@@ -151,7 +151,19 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Itens em Estoque", style = MaterialTheme.typography.headlineSmall)
+            // ✅ Total de itens em estoque
+            val totalItens = estoque.sumOf { it.item.quantidade }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Itens em Estoque ($totalItens)",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
