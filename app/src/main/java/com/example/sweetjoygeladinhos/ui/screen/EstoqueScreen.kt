@@ -128,6 +128,20 @@ fun EstoqueScreen(
 
             Button(
                 onClick = {
+                    var alteracaoFeita = false
+
+                    // Atualiza apenas os itens cujo quantidadeEditada é diferente da quantidade salva
+                    estoque.forEach { itemComProduto ->
+                        val novaQtd = itemComProduto.quantidadeEditada
+                        if (novaQtd != itemComProduto.item.quantidade) {
+                            viewModel.salvarEstoque(
+                                itemComProduto.item.copy(quantidade = novaQtd)
+                            )
+                            alteracaoFeita = true
+                        }
+                    }
+
+                    // Adiciona novo item, se informado
                     val qtd = quantidade.toIntOrNull() ?: 0
                     val produto = produtoSelecionado
                     if (produto != null && qtd > 0) {
@@ -139,9 +153,13 @@ fun EstoqueScreen(
                         )
                         quantidade = ""
                         produtoSelecionado = null
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Estoque salvo com sucesso!")
-                        }
+                        alteracaoFeita = true
+                    }
+
+                    // Feedback
+                    coroutineScope.launch {
+                        val msg = if (alteracaoFeita) "Estoque salvo com sucesso!" else "Nenhuma alteração detectada."
+                        snackbarHostState.showSnackbar(msg)
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -151,7 +169,7 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ✅ Total de itens em estoque
+            // Total de itens em estoque (exibe a soma das quantidades atuais)
             val totalItens = estoque.sumOf { it.item.quantidade }
 
             Row(
@@ -174,7 +192,8 @@ fun EstoqueScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(estoque) { itemComProduto ->
+                // manter key para estabilidade de estado
+                items(estoque, key = { it.item.produtoId }) { itemComProduto ->
                     EstoqueItemCard(
                         itemComProduto = itemComProduto,
                         onAtualizar = { item ->
@@ -223,7 +242,13 @@ fun EstoqueItemCard(
     onAtualizar: (EstoqueItem) -> Unit,
     onExcluirSolicitado: (EstoqueItemComProduto) -> Unit
 ) {
-    var quantidadeEditada by remember { mutableStateOf(itemComProduto.item.quantidade.toString()) }
+    // estado local do textfield (string) — sincronizamos com itemComProduto.quantidadeEditada
+    var quantidadeEditadaStr by remember { mutableStateOf(itemComProduto.quantidadeEditada.toString()) }
+
+    // se a quantidade original mudar (ex: nova carga da ViewModel), atualiza o textfield
+    LaunchedEffect(itemComProduto.item.quantidade) {
+        quantidadeEditadaStr = itemComProduto.quantidadeEditada.toString()
+    }
 
     Card(
         modifier = Modifier
@@ -251,10 +276,11 @@ fun EstoqueItemCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
-                    value = quantidadeEditada,
+                    value = quantidadeEditadaStr,
                     onValueChange = {
                         if (it.all { char -> char.isDigit() }) {
-                            quantidadeEditada = it
+                            quantidadeEditadaStr = it
+                            itemComProduto.quantidadeEditada = it.toIntOrNull() ?: itemComProduto.item.quantidade
                         }
                     },
                     label = { Text("Qtd") },
@@ -267,11 +293,14 @@ fun EstoqueItemCard(
 
                 IconButton(
                     onClick = {
-                        val novaQtd = quantidadeEditada.toIntOrNull()
-                        if (novaQtd != null) {
+                        val novaQtd = quantidadeEditadaStr.toIntOrNull() ?: return@IconButton
+                        if (novaQtd != itemComProduto.item.quantidade) {
+                            // salva apenas este item
                             onAtualizar(
                                 itemComProduto.item.copy(quantidade = novaQtd)
                             )
+                            // sincroniza o campo editado
+                            itemComProduto.quantidadeEditada = novaQtd
                         }
                     },
                     modifier = Modifier.size(40.dp)
