@@ -185,6 +185,9 @@ fun EstoqueScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // 🔽 Ordena a lista de estoque pela quantidade (ordem crescente)
+            val estoqueOrdenado = remember(estoque) { estoque.sortedBy { it.item.quantidade } }
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
@@ -192,8 +195,7 @@ fun EstoqueScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // manter key para estabilidade de estado
-                items(estoque, key = { it.item.produtoId }) { itemComProduto ->
+                items(estoqueOrdenado, key = { it.item.produtoId }) { itemComProduto ->
                     EstoqueItemCard(
                         itemComProduto = itemComProduto,
                         onAtualizar = { item ->
