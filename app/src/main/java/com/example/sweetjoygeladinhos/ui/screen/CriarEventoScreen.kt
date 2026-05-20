@@ -21,6 +21,7 @@ import com.example.sweetjoygeladinhos.model.EventoItem
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.viewmodel.EstoqueViewModel
 import com.example.sweetjoygeladinhos.viewmodel.EventoViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,7 @@ fun CriarEventoScreen(
     eventoViewModel: EventoViewModel = viewModel()
 ) {
     val produtos by estoqueViewModel.produtos.collectAsState()
+    val estoque by estoqueViewModel.estoque.collectAsState()
     val carregandoProdutos by estoqueViewModel.carregandoProdutos.collectAsState()
     val eventos by eventoViewModel.eventos.collectAsState()
 
@@ -46,6 +48,7 @@ fun CriarEventoScreen(
     var novaQuantidadeEditada by remember { mutableStateOf("") }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Carregar dados se for edição
     LaunchedEffect(eventoId, eventos, produtos) {
@@ -145,9 +148,17 @@ fun CriarEventoScreen(
                         val prod = produtoSelecionado
                         val qtd = quantidade.toIntOrNull() ?: 0
                         if (prod != null && qtd > 0) {
-                            itensEvento = itensEvento + (prod to qtd)
-                            quantidade = ""
-                            produtoSelecionado = null
+                            val estoqueDisponivel = estoque.find { it.produto.id == prod.id }?.item?.quantidade ?: 0
+                            
+                            if (qtd > estoqueDisponivel) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Erro: Apenas $estoqueDisponivel em estoque.")
+                                }
+                            } else {
+                                itensEvento = itensEvento + (prod to qtd)
+                                quantidade = ""
+                                produtoSelecionado = null
+                            }
                         }
                     }
                 ) {
@@ -259,13 +270,22 @@ fun CriarEventoScreen(
                     TextButton(onClick = {
                         val novaQtd = novaQuantidadeEditada.toIntOrNull() ?: 0
                         if (novaQtd > 0) {
-                            itensEvento = itensEvento.map {
-                                if (it.first.id == itemParaEditar?.first?.id) {
-                                    it.first to novaQtd
-                                } else it
+                            val prodId = itemParaEditar?.first?.id
+                            val estoqueDisponivel = estoque.find { it.produto.id == prodId }?.item?.quantidade ?: 0
+                            
+                            if (novaQtd > estoqueDisponivel) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Erro: Apenas $estoqueDisponivel em estoque.")
+                                }
+                            } else {
+                                itensEvento = itensEvento.map {
+                                    if (it.first.id == prodId) {
+                                        it.first to novaQtd
+                                    } else it
+                                }
+                                itemParaEditar = null
                             }
                         }
-                        itemParaEditar = null
                     }) {
                         Text("Salvar")
                     }
