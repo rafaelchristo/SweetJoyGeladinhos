@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,17 +16,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.sweetjoygeladinhos.model.Evento
+import com.example.sweetjoygeladinhos.model.EventoItem
 import com.example.sweetjoygeladinhos.model.Produto
 import com.example.sweetjoygeladinhos.viewmodel.EstoqueViewModel
+import com.example.sweetjoygeladinhos.viewmodel.EventoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CriarEventoScreen(
     navController: NavController,
-    viewModel: EstoqueViewModel = viewModel()
+    eventoId: String? = null,
+    estoqueViewModel: EstoqueViewModel = viewModel(),
+    eventoViewModel: EventoViewModel = viewModel()
 ) {
-    val produtos by viewModel.produtos.collectAsState()
-    val carregandoProdutos by viewModel.carregandoProdutos.collectAsState()
+    val produtos by estoqueViewModel.produtos.collectAsState()
+    val carregandoProdutos by estoqueViewModel.carregandoProdutos.collectAsState()
+    val eventos by eventoViewModel.eventos.collectAsState()
 
     var nomeEvento by remember { mutableStateOf("") }
     var produtoSelecionado by remember { mutableStateOf<Produto?>(null) }
@@ -35,13 +42,30 @@ fun CriarEventoScreen(
     // Lista de itens adicionados ao evento
     var itensEvento by remember { mutableStateOf(listOf<Pair<Produto, Int>>()) }
 
+    var itemParaEditar by remember { mutableStateOf<Pair<Produto, Int>?>(null) }
+    var novaQuantidadeEditada by remember { mutableStateOf("") }
+
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Carregar dados se for edição
+    LaunchedEffect(eventoId, eventos, produtos) {
+        if (eventoId != null && produtos.isNotEmpty()) {
+            val evento = eventos.find { it.id == eventoId }
+            if (evento != null) {
+                nomeEvento = evento.nome
+                itensEvento = evento.itens.mapNotNull { item ->
+                    val produto = produtos.find { it.id == item.produtoId }
+                    if (produto != null) produto to item.quantidade else null
+                }
+            }
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Criar Novo Evento") }
+                title = { Text(if (eventoId == null) "Criar Novo Evento" else "Editar Evento") }
             )
         }
     ) { paddingValues ->
@@ -154,14 +178,26 @@ fun CriarEventoScreen(
                                 Text(produto.nome, style = MaterialTheme.typography.bodyLarge)
                                 Text("Quantidade: $qtd", style = MaterialTheme.typography.bodyMedium)
                             }
-                            IconButton(onClick = {
-                                itensEvento = itensEvento.filterNot { it.first.id == produto.id && it.second == qtd }
-                            }) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Remover",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
+                            Row {
+                                IconButton(onClick = {
+                                    itemParaEditar = produto to qtd
+                                    novaQuantidadeEditada = qtd.toString()
+                                }) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Editar Quantidade",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    itensEvento = itensEvento.filterNot { it.first.id == produto.id && it.second == qtd }
+                                }) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Remover",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
@@ -173,15 +209,73 @@ fun CriarEventoScreen(
             Button(
                 onClick = {
                     if (nomeEvento.isNotBlank() && itensEvento.isNotEmpty()) {
-                        // TODO: Salvar o evento no banco futuramente
-                        navController.popBackStack()
+                        val novoEvento = Evento(
+                            id = eventoId ?: "",
+                            nome = nomeEvento,
+                            itens = itensEvento.map { (produto, qtd) ->
+                                EventoItem(
+                                    produtoId = produto.id,
+                                    nomeProduto = produto.nome,
+                                    quantidade = qtd
+                                )
+                            }
+                        )
+
+                        if (eventoId == null) {
+                            eventoViewModel.criarEvento(novoEvento) {
+                                navController.popBackStack()
+                            }
+                        } else {
+                            eventoViewModel.atualizarEvento(novoEvento) {
+                                navController.popBackStack()
+                            }
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = nomeEvento.isNotBlank() && itensEvento.isNotEmpty()
             ) {
-                Text("Confirmar Evento")
+                Text(if (eventoId == null) "Confirmar Evento" else "Salvar Alterações")
             }
+        }
+
+        if (itemParaEditar != null) {
+            AlertDialog(
+                onDismissRequest = { itemParaEditar = null },
+                title = { Text("Editar Quantidade") },
+                text = {
+                    Column {
+                        Text("Produto: ${itemParaEditar?.first?.nome}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = novaQuantidadeEditada,
+                            onValueChange = { if (it.all { char -> char.isDigit() }) novaQuantidadeEditada = it },
+                            label = { Text("Nova Quantidade") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val novaQtd = novaQuantidadeEditada.toIntOrNull() ?: 0
+                        if (novaQtd > 0) {
+                            itensEvento = itensEvento.map {
+                                if (it.first.id == itemParaEditar?.first?.id) {
+                                    it.first to novaQtd
+                                } else it
+                            }
+                        }
+                        itemParaEditar = null
+                    }) {
+                        Text("Salvar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { itemParaEditar = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }

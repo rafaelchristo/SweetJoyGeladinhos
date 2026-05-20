@@ -1,15 +1,13 @@
 pluginManagement {
     repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
-        mavenCentral()
         gradlePluginPortal()
+        google()
+        mavenCentral()
     }
+}
+plugins {
+    // Note: The foojay-resolver-convention plugin was removed due to resolution issues.
+    // It is not strictly required for this project to build.
 }
 
 dependencyResolutionManagement {

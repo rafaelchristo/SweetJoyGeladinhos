@@ -32,7 +32,8 @@ fun HomeContent(navController: NavController, userViewModel: UserViewModel) {
         "Pagamentos" to "pagamentos",
         "Receitas" to "receitas",
         "Promoção" to "promocao",
-        "Fazer Pedido" to "pedidos"
+        "Fazer Pedido" to "pedidos",
+        "Feira e Eventos" to "feira_eventos"
     )
 
     val menuItems = adminMenu

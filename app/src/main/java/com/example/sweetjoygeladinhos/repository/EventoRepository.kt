@@ -21,4 +21,12 @@ class EventoRepository {
         val snapshot = eventosRef.document(id).get().await()
         return snapshot.toObject(Evento::class.java)
     }
+
+    suspend fun deletarEvento(id: String) {
+        eventosRef.document(id).delete().await()
+    }
+
+    suspend fun atualizarEvento(evento: Evento) {
+        eventosRef.document(evento.id).set(evento).await()
+    }
 }

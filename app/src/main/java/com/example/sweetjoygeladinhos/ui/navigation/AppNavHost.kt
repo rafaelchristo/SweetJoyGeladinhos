@@ -4,8 +4,10 @@ import ProdutosScreen
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.sweetjoygeladinhos.ui.screen.*
 import com.example.sweetjoygeladinhos.ui.screens.*
 import com.example.sweetjoygeladinhos.viewmodel.*
@@ -80,6 +82,27 @@ fun AppNavHost(
         composable("pedidos") {
             val pedidosViewModel: PedidosViewModel = viewModel()
             PedidosScreen(viewModel = pedidosViewModel)
+        }
+
+        composable("feira_eventos") {
+            FeiraEventosScreen(navController = navController)
+        }
+
+        composable(
+            route = "criar_evento?eventoId={eventoId}",
+            arguments = listOf(navArgument("eventoId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val eventoId = backStackEntry.arguments?.getString("eventoId")
+            CriarEventoScreen(navController = navController, eventoId = eventoId)
+        }
+
+        composable("detalhes_evento/{eventoId}") { backStackEntry ->
+            val eventoId = backStackEntry.arguments?.getString("eventoId") ?: ""
+            DetalhesEventoScreen(eventoId = eventoId)
         }
     }
 }

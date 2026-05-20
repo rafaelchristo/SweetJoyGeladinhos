@@ -45,4 +45,27 @@ class EventoViewModel : ViewModel() {
             }
         }
     }
+
+    fun deletarEvento(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.deletarEvento(id)
+                carregarEventos()
+            } catch (e: Exception) {
+                // Tratar erro
+            }
+        }
+    }
+
+    fun atualizarEvento(evento: Evento, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.atualizarEvento(evento)
+                carregarEventos()
+                onSuccess()
+            } catch (e: Exception) {
+                // Tratar erro
+            }
+        }
+    }
 }
